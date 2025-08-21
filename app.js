@@ -1,7 +1,7 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/VRButton.js';
-import { DeviceOrientationControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/DeviceOrientationControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { DeviceOrientationControls } from 'three/addons/controls/DeviceOrientationControls.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
 
 
 const hero = document.getElementById('hero');
