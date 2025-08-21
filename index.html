@@ -90,6 +90,15 @@ patched = """<!DOCTYPE html>
   <div id="toast"></div>
 
   <!-- External module only (no inline code) -->
+   <!-- Map the bare specifier "three" to the real ESM file -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
   <script type="module" src="./app.js"></script>
 </body>
 </html>
