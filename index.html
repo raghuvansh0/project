@@ -1,11 +1,12 @@
-<!DOCTYPE html>
+# Create a patched index.html that ONLY references app.js (no inline code),
+# and set the MP4 to the user's R2 URL.
+patched = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>RV‑QUANTUM • Immersive Demo</title>
+  <title>RV-QUANTUM • Immersive Demo</title>
   <style>
-    /* --- Minimal reset / theme --- */
     html,body{margin:0;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#0f0f1e 50%,#16213e 100%);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
     a{color:inherit}
     .wrap{max-width:420px;margin:0 auto;padding:16px}
@@ -14,7 +15,7 @@
     .logo{font-weight:800;letter-spacing:.3px;background:linear-gradient(90deg,#38b6ff,#4a7c9e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 6px rgba(56,182,255,.35)}
     .content{padding:14px 16px 80px;background:linear-gradient(180deg,#0a0e27,#0d1117)}
     h2{margin:8px 0 10px;font-size:22px;background:linear-gradient(90deg,#38b6ff,#4a7c9e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 6px rgba(56,182,255,.15)}
-    .hero{position:relative;height:220px;border-radius:16px;overflow:hidden;border:1px solid #2a4a7c;cursor:pointer}
+    .hero{position:relative;height:220px;border-radius:16px;overflow:hidden;border:1px solid #2a4a7c;cursor:pointer;display:block}
     .hero img{width:100%;height:100%;object-fit:cover;opacity:.9;display:block}
     .hero::after{content:"";position:absolute;inset:auto 0 0 0;height:50%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.9))}
     .ctaPlay{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:60px;height:60px;background:rgba(56,182,255,.9);border-radius:50%;display:grid;place-items:center;box-shadow:0 10px 30px rgba(56,182,255,.35)}
@@ -26,13 +27,11 @@
     .bottom{position:sticky;bottom:0;left:0;right:0;display:flex;gap:20px;justify-content:center;align-items:center;height:64px;background:linear-gradient(180deg,#0d1117,#0a0e27);border-top:1px solid #2a4a7c}
     .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700}
     .btn.ghost{background:rgba(255,255,255,.08);color:#dfe8ff}
-    /* Overlays */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.95);backdrop-filter:blur(8px);display:none;z-index:50}
     .player{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,640px);background:#000;border:2px solid #38b6ff;border-radius:16px;overflow:hidden;box-shadow:0 0 50px rgba(56,182,255,.3)}
     .player header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:linear-gradient(180deg,#102040,#0a1328);border-bottom:1px solid #2a4a7c}
     .player iframe,.player video{width:100%;height:360px;border:0;background:#000;display:block}
     .close{background:transparent;color:#fff;border:0;font-size:22px;cursor:pointer;width:36px;height:36px;border-radius:50%}
-    /* XR canvas overlay */
     #xrWrap{position:fixed;inset:0;background:#000;display:none;z-index:60}
     #xrToolbar{position:fixed;top:10px;left:10px;z-index:70;display:flex;gap:8px}
     #xrClose{border:0;background:rgba(0,0,0,.5);color:#fff;padding:10px 12px;border-radius:10px;border:1px solid rgba(120,160,255,.3);cursor:pointer}
@@ -42,17 +41,17 @@
 <body>
   <div class="wrap">
     <div class="phone">
-      <div class="top"><div class="logo">RV‑QUANTUM</div><div style="opacity:.6">demo</div></div>
+      <div class="top"><div class="logo">RV-QUANTUM</div><div style="opacity:.6">demo</div></div>
       <div class="content">
         <h2>Trending</h2>
-        <!-- Update the data-mp4 to your R2 URL -->
-        <div id="hero" class="hero"
-             data-mp4="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4" 
-             data-title="Concept Video"
-             data-poster="">
+        <a id="hero" class="hero"
+           href="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4"
+           data-mp4="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4" 
+           data-title="Concept Video"
+           data-poster="">
           <img src="https://img.youtube.com/vi/JVAZGhSdczM/maxresdefault.jpg" alt="Hero">
           <div class="ctaPlay"><i></i></div>
-        </div>
+        </a>
         <p class="tag">Tap the card — immersive 3D if available, YouTube fallback otherwise.</p>
 
         <div class="grid">
@@ -63,13 +62,12 @@
         </div>
       </div>
       <div class="bottom">
-        <button class="btn ghost" id="open2d">Play 2D</button>
-        <button class="btn ghost" id="openYT">Play on YouTube</button>
+        <a class="btn ghost" id="open2d" href="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4" target="_blank" rel="noopener">Play 2D</a>
+        <a class="btn ghost" id="openYT" href="https://youtu.be/JVAZGhSdczM" target="_blank" rel="noopener">Play on YouTube</a>
       </div>
     </div>
   </div>
 
-  <!-- 2D/YouTube overlays -->
   <div id="ov2d" class="overlay" role="dialog" aria-modal="true">
     <div class="player">
       <header><strong id="t2d">Playing</strong><button class="close" data-close="ov2d">✕</button></header>
@@ -84,7 +82,6 @@
     </div>
   </div>
 
-  <!-- XR canvas overlay -->
   <div id="xrWrap">
     <div id="xrToolbar">
       <button id="xrClose">Exit</button>
@@ -92,117 +89,8 @@
   </div>
   <div id="toast"></div>
 
-  <!-- Three.js modules -->
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-    import { VRButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js';
-
-    const hero = document.getElementById('hero');
-    const mp4  = hero.dataset.mp4;
-    const title= hero.dataset.title || 'RV‑OTT';
-    const poster = hero.dataset.poster || '';
-    const YT_ID = 'JVAZGhSdczM';
-    const toast = (m)=>{const el=document.getElementById('toast'); el.textContent=m; el.style.display='block'; setTimeout(()=>el.style.display='none',2200);};
-
-    // Helpers
-    async function xrSupported(){
-      if(!('xr' in navigator)) return false;
-      try { return await navigator.xr.isSessionSupported('immersive-vr'); } catch { return false; }
-    }
-    function inTelegram(){ return /Telegram/i.test(navigator.userAgent) || (window.Telegram && Telegram.WebApp); }
-
-    // 2D overlay
-    const ov2d = document.getElementById('ov2d'), v2d = document.getElementById('v2d');
-    document.getElementById('open2d').onclick = ()=>{ v2d.src = mp4 || ''; document.getElementById('t2d').textContent = title; ov2d.style.display='block'; v2d.play().catch(()=>toast('Tap to start video')); };
-    document.querySelector('[data-close="ov2d"]').onclick = ()=>{ v2d.pause(); v2d.src=''; ov2d.style.display='none'; };
-
-    // YouTube overlay
-    const ovYT = document.getElementById('ovYT'), yt = document.getElementById('yt');
-    document.getElementById('openYT').onclick = ()=>{ yt.src = `https://www.youtube.com/embed/${YT_ID}?autoplay=1&modestbranding=1&rel=0&playsinline=1`; ovYT.style.display='block'; };
-    document.querySelector('[data-close="ovYT"]').onclick = ()=>{ yt.src=''; ovYT.style.display='none'; };
-
-    // XR theater (Three.js)
-    let renderer, scene, camera, controls, screen, videoEl, videoTex;
-    const xrWrap = document.getElementById('xrWrap');
-    document.getElementById('xrClose').onclick = ()=>{ try{renderer.setAnimationLoop(null);}catch{} if(videoEl){videoEl.pause(); videoEl.src='';} xrWrap.innerHTML = '<div id="xrToolbar"><button id="xrClose">Exit</button></div>'; document.getElementById('xrClose').onclick = ()=>{history.back();}; xrWrap.style.display='none'; };
-
-    function buildScene(){
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, .1, 200);
-      camera.position.set(0,1.6,0);
-      renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
-      renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-      renderer.setSize(innerWidth, innerHeight);
-      renderer.xr.enabled = true;
-
-      // attach canvas into overlay
-      xrWrap.appendChild(renderer.domElement);
-
-      // room
-      const roomGeo = new THREE.SphereGeometry(20, 48, 32); roomGeo.scale(-1,1,1);
-      scene.add(new THREE.Mesh(roomGeo, new THREE.MeshBasicMaterial({color:0x0a1020})));
-
-      // floor glow
-      const glow = new THREE.Mesh(new THREE.RingGeometry(1.8,2.2,64), new THREE.MeshBasicMaterial({color:0x1e5bff, side:THREE.DoubleSide, transparent:true, opacity:.12}));
-      glow.rotation.x = -Math.PI/2; glow.position.y = 0.01; scene.add(glow);
-
-      // screen 16:9
-      const h=3.0, w=h*(16/9);
-      screen = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:0x000000}));
-      screen.position.set(0,1.6,-4.2);
-      scene.add(screen);
-
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.target.set(0,1.6,-4.2); controls.enableDamping=true; controls.minDistance=2.2; controls.maxDistance=8; controls.update();
-
-      addEventListener('resize', ()=>{camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight);});
-      renderer.setAnimationLoop(()=>{controls.update(); renderer.render(scene,camera);});
-    }
-
-    async function startXR(){
-      if(!mp4){ toast('No MP4 URL set'); return; }
-      if(!renderer) buildScene();
-      xrWrap.style.display='block';
-
-      // video element for texture
-      videoEl = document.createElement('video');
-      videoEl.crossOrigin = 'anonymous';
-      videoEl.playsInline = true; videoEl.setAttribute('webkit-playsinline','');
-      videoEl.preload = 'auto'; videoEl.src = mp4; if(poster) videoEl.poster = poster;
-
-      try { await videoEl.play(); } 
-      catch { toast('Tap again to allow video start'); /* need a second user gesture on some mobiles */ }
-
-      videoTex = new THREE.VideoTexture(videoEl);
-      videoTex.colorSpace = THREE.SRGBColorSpace;
-      screen.material = new THREE.MeshBasicMaterial({map:videoTex, toneMapped:false});
-
-      // Add VR button if supported & not in Telegram
-      if (!inTelegram() && await xrSupported()){
-        const btn = VRButton.createButton(renderer);
-        btn.style.position='fixed'; btn.style.right='10px'; btn.style.bottom='12px';
-        document.body.appendChild(btn);
-      } else {
-        toast('3D viewer active (open in Chrome/Quest for VR)');
-      }
-    }
-
-    // Tap handlers
-    hero.addEventListener('click', async () => {
-      const canXR = await xrSupported();
-      if (canXR && !inTelegram()) {
-        startXR();
-      } else {
-        // fallback: open YT overlay or 2D overlay with the MP4 if set
-        if(mp4) { document.getElementById('open2d').click(); }
-        else    { document.getElementById('openYT').click(); }
-      }
-    });
-
-    // Deep link support: index.html?src=...&title=...
-    const q = new URLSearchParams(location.search);
-    const qs = q.get('src'); if(qs){ hero.dataset.mp4 = qs; document.getElementById('open2d').click(); }
-  </script>
+  <!-- External module only (no inline code) -->
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
+"""
