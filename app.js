@@ -112,9 +112,9 @@ document.getElementById('xrClose').onclick = ()=>{
     if (controls) controls.update();
     renderer.render(scene, camera);
   });
-}
+} //end buildscene
 
-}
+
 
 // Requires: buildScene(), attachVideoToScreen(), and
 // import { VRButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js';
