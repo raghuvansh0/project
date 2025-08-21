@@ -1,0 +1,847 @@
+<!--updated file-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RV-QUANTUM</title>
+    
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @font-face {
+        font-family: 'Exo 2';
+        src: url('FONTS/Exo_2-font/static/Exo2-LightItalic.ttf') format('truetype');
+        font-weight: 650;
+        font-style: normal;
+        }
+ 
+        @font-face {
+        font-family: 'Orbitron';
+        src: url('FONTS/Orbitron/static/Orbitron-Bold.ttf') format('truetype'); /* adjust file name if different */
+        font-weight: 450;
+        font-style: normal;
+        }
+        @font-face 
+        {
+        font-family: 'Alegreya SC';
+        src: url('FONTS/Alegreya_SC-font/AlegreyaSC-Bold.ttf') format('truetype');
+        font-weight: bold;
+        font-style: normal;
+        }
+
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #ffffff;
+        }
+
+        .phone-mockup {
+            width: 100%;
+            max-width: 380px;
+            height: 820px;
+            background: #000;
+            border-radius: 45px;
+            padding: 10px;
+            box-shadow: 0 0 80px rgba(56, 182, 255, 0.3),
+                        0 0 40px rgba(56, 182, 255, 0.2),
+                        inset 0 0 2px rgba(255, 255, 255, 0.1);
+            border: 2px solid #2a4a7c;
+            position: relative;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #0a0e27 0%, #0d1117 100%);
+            border-radius: 35px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 28px;
+            background: #000;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .app-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 20px 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+
+        .app-title {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 24px;         /* smaller for balance */
+            font-weight: bold;
+            letter-spacing: 0.75px;     /* tighten a little */
+
+            /* gradient text */
+            background: linear-gradient(90deg, #38b6ff, #4a7c9e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+
+            text-shadow: 0 0 6px rgba(56,182,255,0.4);
+         
+            
+        }
+       
+
+        
+@media (prefers-reduced-motion: no-preference){
+  .app-title{ animation:glowPulse 3.5s ease-in-out infinite; }
+}
+
+        .header-icons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid #4a7c9e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(56, 182, 255, 0.1);
+            border-color: #38b6ff;
+        }
+
+        .search-icon::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            display: block;
+            position: relative;
+        }
+
+        .search-icon::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 8px;
+            background: #fff;
+            transform: rotate(-45deg);
+            right: 10px;
+            bottom: 10px;
+        }
+
+        .profile-icon::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            background: #4a7c9e;
+            border-radius: 50%;
+            display: block;
+            position: relative;
+            background: linear-gradient(135deg, #38b6ff, #4a7c9e);
+        }
+
+        .profile-icon::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 15px;
+            background: linear-gradient(135deg, #38b6ff, #4a7c9e);
+            border-radius: 50px 50px 0 0;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 70px;
+        }
+
+        .content-area::-webkit-scrollbar {
+            width: 0;
+        }
+
+       /* .section-title, 
+        .category-title 
+        {
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            font-family: 'Alegreya SC', serif;  
+        }*/
+        .section-title, .category-title{
+            font-family:'Alegreya SC', serif;
+            font-size:26px; font-weight:700;
+            background:linear-gradient(90deg,#38b6ff,#4a7c9e);
+            -webkit-background-clip:text; background-clip:text;
+            -webkit-text-fill-color:transparent;
+            text-shadow:0 0 6px rgba(56,182,255,.15);
+        }
+
+
+        .hero-banner {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #1a3a52 0%, #0a1929 100%);
+            border-radius: 20px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #2a4a7c;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
+
+        
+        .tagline{
+            font-family:'Orbitron', sans-serif;
+            font-weight:700; font-size:18px; line-height:1.25;
+            text-align:center; letter-spacing:.6px;
+            max-width:300px; margin:14px auto 26px;
+        }
+
+        .tl-neon{
+          color:#eaf6ff;
+          text-shadow:
+          0 0 2px rgba(255,255,255,.8),
+          0 0 8px rgba(56,182,255,.35),
+          0 0 18px rgba(56,182,255,.25);
+        }
+
+        .category-section {
+            margin-bottom: 30px;
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+       
+        .arrow-btn {
+            width: 30px;
+            height: 30px;
+            background: transparent;
+            border: none;
+            color: #4a7c9e;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .arrow-btn:hover {
+            color: #38b6ff;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            overflow-x: auto;
+        }
+
+        .content-card {
+            width: 100%;
+            aspect-ratio: 3/4;
+            background: linear-gradient(135deg, #1a3a52 0%, #0a1929 100%);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #2a4a7c;
+            cursor: pointer;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .content-card:hover {
+            transform: scale(1.05);
+            border-color: #38b6ff;
+        }
+
+        .content-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.85;
+        }
+
+        .play-button {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 25px;
+            height: 25px;
+            background: rgba(56, 182, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .play-icon {
+            width: 0;
+            height: 0;
+            border-left: 8px solid white;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            margin-left: 2px;
+        }
+
+       
+        /* YouTube Player Styles */
+        .youtube-player-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .youtube-player-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 600px;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid #38b6ff;
+            box-shadow: 0 0 50px rgba(56, 182, 255, 0.3);
+        }
+
+        .youtube-player-header {
+            background: linear-gradient(135deg, #1a3a52 0%, #0a1929 100%);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a4a7c;
+        }
+
+        .video-title {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .close-player {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .close-player:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .youtube-iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+        }
+        
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: linear-gradient(to top, #0a0e27, #0d1117);
+            border-top: 1px solid #2a4a7c;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+            border-radius: 0 0 35px 35px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            color: #6a8caf;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: #38b6ff;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            position: relative;
+        }
+
+        .home-icon::before {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 20px;
+            border: 2px solid currentColor;
+            border-bottom: none;
+            clip-path: polygon(50% 0%, 100% 40%, 100% 100%, 0% 100%, 0% 40%);
+        }
+
+        .search-nav-icon::before {
+            content: '';
+            width: 18px;
+            height: 18px;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            display: block;
+            position: absolute;
+        }
+
+        .search-nav-icon::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 8px;
+            background: currentColor;
+            transform: rotate(-45deg);
+            right: 0;
+            bottom: 0;
+        }
+
+        .categories-icon::before {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid currentColor;
+            top: 0;
+            left: 0;
+        }
+
+        .categories-icon::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid currentColor;
+            top: 0;
+            right: 0;
+        }
+
+        .categories-icon span {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid currentColor;
+            bottom: 0;
+            left: 0;
+        }
+
+        .categories-icon span::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid currentColor;
+            top: 0;
+            right: -2px;
+        }
+
+        .profile-nav-icon::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            background: currentColor;
+            border-radius: 50%;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .nav-label {
+            font-size: 10px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 480px) {
+            .phone-mockup {
+                max-width: 100%;
+                height: 100vh;
+                border-radius: 0;
+                padding: 0;
+                border: none;
+            }
+
+            .phone-screen {
+                border-radius: 0;
+            }
+
+            .notch {
+                display: none;
+            }
+
+            .app-container {
+                padding: 20px 15px 0;
+            }
+        }
+            .hero-play-button{
+                position:absolute; inset:auto 0 16px 0; margin:auto; width:56px; height:56px;
+                background:rgba(56,182,255,.85); border-radius:50%; display:flex; align-items:center; justify-content:center;
+                box-shadow:0 8px 28px rgba(56,182,255,.35);
+            }
+            .hero-play-button .play-icon{
+                width:0;height:0;border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:3px;
+            }
+            
+
+    </style>
+</head>
+<body>
+    <div class="phone-mockup">
+        <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="app-container">
+                <header class="header">
+                    <h1 class="app-title">RV-QUANTUM</h1>
+                    <div class="header-icons">
+                        <button class="icon-btn search-icon"></button>
+                        <button class="icon-btn profile-icon"></button>
+                    </div>
+                </header>
+
+                <div class="content-area">
+                    <h2 class="section-title">Trending</h2>
+                    
+                    <div class="hero-banner" onclick="playYouTubeVideo('JVAZGhSdczM')">
+                        <!-- Use YouTube’s thumbnail as the poster -->
+                        <img src="https://img.youtube.com/vi/JVAZGhSdczM/maxresdefault.jpg" alt="Hero" class="hero-image" onerror="this.onerror=null; this.src='https://img.youtube.com/vi/JVAZGhSdczM/hqdefault.jpg';"/> 
+                        <div class="hero-overlay"></div>
+                        <div class="hero-play-button"><div class="play-icon"></div></div>
+                    </div>
+                    <!-- Put this right after the hero-banner -->
+                    <div id="youtubeOverlay" class="youtube-player-overlay" role="dialog" aria-modal="true">
+                    <div class="youtube-player-container">
+                    <div class="youtube-player-header">
+                    <span class="video-title">Trailer</span>
+                    <button id="close-player" class="close-player" aria-label="Close">✕</button>
+                    </div>
+                    <iframe id="video-iframe" class="youtube-iframe"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen playsinline></iframe>
+                    </div>
+                    
+                                    
+                    </div>
+
+                    <p class="tagline tl-neon">The Next Dimension of Streaming.</p>
+
+                    <div class="category-section">
+                        <div class="category-header">
+                            <h3 class="category-title">Action</h3>
+                            <button class="arrow-btn">›</button>
+                        </div>
+                        <div class="content-grid">
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/f203e9c5-1824-4467-b61a-77c07cb653f7.png" alt="Intense action movie poster with male protagonist wearing sunglasses in dramatic orange and blue lighting with explosions in background" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/5aa4476c-70c7-4411-b9e4-466c43560af0.png" alt="Female action hero with red hair in tactical gear against orange fire backdrop looking determined" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/128fd458-ac81-448c-8d4f-086dbdb29820.png" alt="Female warrior in blue-tinted dramatic lighting holding weapon with intense expression" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a4fd76cf-d308-4c30-a977-37e4319ee348.png" alt="Older male action star with grey beard in blue lighting looking weathered and tough" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="category-section">
+                        <div class="category-header">
+                            <h3 class="category-title">Drama</h3>
+                            <button class="arrow-btn">›</button>
+                        </div>
+                        <div class="content-grid">
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/fea51a25-8cd0-4f4f-a177-1e5998466c86.png" alt="Dramatic portrait of male lead character with strong jawline in warm orange lighting looking contemplative" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/f414ceb2-103a-4eac-b21d-2cca175c04bb.png" alt="Female drama lead with auburn hair in emotional scene with soft orange lighting and tears in eyes" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/6897864d-837e-48c4-96de-fcb00b26ed0f.png" alt="Smiling male character in blue-tinted lighting showing joy and warmth in dramatic scene" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/ed6950f1-7e83-463c-88d8-051afe33e6c5.png" alt="Mysterious hooded figure in dark blue shadows creating suspenseful dramatic atmosphere" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="category-section">
+                        <div class="category-header">
+                            <h3 class="category-title">Documentary</h3>
+                            <button class="arrow-btn">›</button>
+                        </div>
+                        <div class="content-grid">
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/3dc8476c-b068-458f-ab14-4a9defd594d3.png" alt="Nature documentary poster showing majestic mountain landscape at sunset with golden hour lighting" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9334fff7-817e-46fc-be91-4946d0355aee.png" alt="Ocean documentary featuring underwater coral reef scene with vibrant marine life in blue waters" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/dfd3fa28-3070-4521-851a-69621e1b1333.png" alt="Space documentary showing nebula and stars in deep space with purple and blue cosmic colors" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                            <div class="content-card">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e59b3e8d-b6df-43ac-bf6d-9119b3ba66f2.png" alt="Historical documentary featuring ancient ruins and archaeological site in warm desert lighting" class="content-image">
+                                <div class="play-button">
+                                    <div class="play-icon"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="bottom-nav">
+                    <div class="nav-item active">
+                        <div class="nav-icon home-icon"></div>
+                        <span class="nav-label">Home</span>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon search-nav-icon"></div>
+                        <span class="nav-label">Search</span>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon categories-icon"><span></span></div>
+                        <span class="nav-label">Categories</span>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon profile-nav-icon"></div>
+                        <span class="nav-label">Quantum Coach</span>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Navigation active state
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Content card hover effect
+            const contentCards = document.querySelectorAll('.content-card');
+            contentCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // Add ripple effect
+                    const ripple = document.createElement('div');
+                    ripple.style.position = 'absolute';
+                    ripple.style.width = '100%';
+                    ripple.style.height = '100%';
+                    ripple.style.background = 'radial-gradient(circle, rgba(56, 182, 255, 0.3) 0%, transparent 70%)';
+                    ripple.style.top = '0';
+                    ripple.style.left = '0';
+                    ripple.style.animation = 'ripple 0.6s ease-out';
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+
+            // Smooth scroll for categories
+            const arrowBtns = document.querySelectorAll('.arrow-btn');
+            arrowBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const grid = this.closest('.category-section').querySelector('.content-grid');
+                    grid.scrollBy({
+                        left: 100,
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // Search button functionality
+            const searchBtns = document.querySelectorAll('.search-icon, .search-nav-icon');
+            searchBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    console.log('Search functionality would open here');
+                });
+            });
+
+            // Profile button functionality
+            const profileBtns = document.querySelectorAll('.profile-icon, .profile-nav-icon');
+            profileBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    console.log('Profile menu would open here');
+                });
+            });
+        });
+
+        // Add CSS animation for ripple effect
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                0% {
+                    transform: scale(0);
+                    opacity: 1;
+                }
+                100% {
+                    transform: scale(1);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+   /* 
+  function playYouTubeVideo(id){
+    const overlay = document.getElementById('youtubeOverlay');
+    const iframe  = document.getElementById('video-iframe');
+    // Autoplay allowed because it’s user-initiated (tap). playsinline works in Telegram webview.
+    iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&rel=0&playsinline=1`;
+    overlay.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  } */
+
+  document.getElementById('close-player').addEventListener('click', () => {
+    const overlay = document.getElementById('youtubeOverlay');
+    const iframe  = document.getElementById('video-iframe');
+    iframe.src = ''; // stop video
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  });
+    </script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  function playYouTubeVideo(id){
+    const overlay = document.getElementById('youtubeOverlay');
+    const iframe  = document.getElementById('video-iframe');
+    iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&rel=0&playsinline=1`;
+    overlay.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+  window.playYouTubeVideo = playYouTubeVideo;
+
+  document.getElementById('close-player').addEventListener('click', () => {
+    const overlay = document.getElementById('youtubeOverlay');
+    const iframe  = document.getElementById('video-iframe');
+    iframe.src = '';
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  });
+});
+</script>
+
+
+</body>
+</html>
+
