@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>RV-QUANTUM • Immersive Demo</title>
+  <style>
+    html,body{margin:0;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#0f0f1e 50%,#16213e 100%);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    a{color:inherit}
+    .wrap{max-width:420px;margin:0 auto;padding:16px}
+    .phone{border-radius:28px;box-shadow:0 0 60px rgba(56,182,255,.25), inset 0 0 2px rgba(255,255,255,.08);border:2px solid #2a4a7c;background:#000;overflow:hidden}
+    .top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:linear-gradient(180deg,#0a0e27,#0d1117)}
+    .logo{font-weight:800;letter-spacing:.3px;background:linear-gradient(90deg,#38b6ff,#4a7c9e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 6px rgba(56,182,255,.35)}
+    .content{padding:14px 16px 80px;background:linear-gradient(180deg,#0a0e27,#0d1117)}
+    h2{margin:8px 0 10px;font-size:22px;background:linear-gradient(90deg,#38b6ff,#4a7c9e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 6px rgba(56,182,255,.15)}
+    .hero{position:relative;height:220px;border-radius:16px;overflow:hidden;border:1px solid #2a4a7c;cursor:pointer;display:block}
+    .hero img{width:100%;height:100%;object-fit:cover;opacity:.9;display:block}
+    .hero::after{content:"";position:absolute;inset:auto 0 0 0;height:50%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.9))}
+    .ctaPlay{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:60px;height:60px;background:rgba(56,182,255,.9);border-radius:50%;display:grid;place-items:center;box-shadow:0 10px 30px rgba(56,182,255,.35)}
+    .ctaPlay i{border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px}
+    .tag{margin:14px auto 0;text-align:center;opacity:.9}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+    .card{border:1px solid #2a4a7c;border-radius:12px;overflow:hidden;aspect-ratio:3/4;background:#0b1120}
+    .card img{width:100%;height:100%;object-fit:cover;opacity:.85}
+    .bottom{position:sticky;bottom:0;left:0;right:0;display:flex;gap:20px;justify-content:center;align-items:center;height:64px;background:linear-gradient(180deg,#0d1117,#0a0e27);border-top:1px solid #2a4a7c}
+    .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700}
+    .btn.ghost{background:rgba(255,255,255,.08);color:#dfe8ff}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.95);backdrop-filter:blur(8px);display:none;z-index:50}
+    .player{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,640px);background:#000;border:2px solid #38b6ff;border-radius:16px;overflow:hidden;box-shadow:0 0 50px rgba(56,182,255,.3)}
+    .player header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:linear-gradient(180deg,#102040,#0a1328);border-bottom:1px solid #2a4a7c}
+    .player iframe,.player video{width:100%;height:360px;border:0;background:#000;display:block}
+    .close{background:transparent;color:#fff;border:0;font-size:22px;cursor:pointer;width:36px;height:36px;border-radius:50%}
+    #xrWrap{position:fixed;inset:0;background:#000;display:none;z-index:60}
+    #xrToolbar{position:fixed;top:10px;left:10px;z-index:70;display:flex;gap:8px}
+    #xrClose{border:0;background:rgba(0,0,0,.5);color:#fff;padding:10px 12px;border-radius:10px;border:1px solid rgba(120,160,255,.3);cursor:pointer}
+    #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(20,24,40,.85);border:1px solid rgba(120,160,255,.25);padding:8px 12px;border-radius:10px;font-size:12px;display:none;z-index:75}
+    .vr-button{position:fixed;right:10px;bottom:12px;z-index:80;background:rgba(56,182,255,.9);color:#fff;border:0;padding:12px 16px;border-radius:8px;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="phone">
+      <div class="top"><div class="logo">RV-QUANTUM</div><div style="opacity:.6">demo</div></div>
+      <div class="content">
+        <h2>Trending</h2>
+        <a id="hero" class="hero"
+           href="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4"
+           data-mp4="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4" 
+           data-title="Concept Video"
+           data-poster="">
+          <img src="https://img.youtube.com/vi/JVAZGhSdczM/maxresdefault.jpg" alt="Hero">
+          <div class="ctaPlay"><i></i></div>
+        </a>
+        <p class="tag">Tap the card — immersive 3D if available, YouTube fallback otherwise.</p>
+
+        <div class="grid">
+          <div class="card"><img src="https://picsum.photos/seed/1/300/400" alt=""></div>
+          <div class="card"><img src="https://picsum.photos/seed/2/300/400" alt=""></div>
+          <div class="card"><img src="https://picsum.photos/seed/3/300/400" alt=""></div>
+          <div class="card"><img src="https://picsum.photos/seed/4/300/400" alt=""></div>
+        </div>
+      </div>
+      <div class="bottom">
+        <a class="btn ghost" id="open2d" href="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4" target="_blank" rel="noopener">Play 2D</a>
+        <a class="btn ghost" id="openYT" href="https://youtu.be/JVAZGhSdczM" target="_blank" rel="noopener">Play on YouTube</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="ov2d" class="overlay" role="dialog" aria-modal="true">
+    <div class="player">
+      <header><strong id="t2d">Playing</strong><button class="close" data-close="ov2d">✕</button></header>
+      <video id="v2d" controls playsinline webkit-playsinline></video>
+    </div>
+  </div>
+
+  <div id="ovYT" class="overlay" role="dialog" aria-modal="true">
+    <div class="player">
+      <header><strong>Trailer</strong><button class="close" data-close="ovYT">✕</button></header>
+      <iframe id="yt" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen playsinline></iframe>
+    </div>
+  </div>
+
+  <div id="xrWrap">
+    <div id="xrToolbar">
+      <button id="xrClose">Exit VR</button>
+    </div>
+  </div>
+  <div id="toast"></div>
+
+  <!-- WebXR Polyfill for better mobile support -->
+  <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.js"></script>
+  
+  <!-- Import Map for Three.js -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+    // Initialize WebXR polyfill
+    const polyfill = new WebXRPolyfill();
+
+    const hero = document.getElementById('hero');
+    const mp4 = hero.dataset.mp4;
+    const title = hero.dataset.title || 'RV-OTT';
+    const poster = hero.dataset.poster || '';
+    const YT_ID = 'JVAZGhSdczM';
+    
+    const toast = (m) => {
+      const el = document.getElementById('toast');
+      el.textContent = m;
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 2200);
+    };
+
+    // Enhanced mobile device detection
+    function isMobile() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+             (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+    }
+
+    function inTelegram() {
+      return /Telegram/i.test(navigator.userAgent) || (window.Telegram && window.Telegram.WebApp);
+    }
+
+    async function xrSupported() {
+      if (!('xr' in navigator)) return false;
+      try {
+        return await navigator.xr.isSessionSupported('immersive-vr');
+      } catch {
+        return false;
+      }
+    }
+
+    // 2D Video Player Setup
+    const ov2d = document.getElementById('ov2d');
+    const v2d = document.getElementById('v2d');
+    
+    document.getElementById('open2d').addEventListener('click', (e) => {
+      e.preventDefault();
+      v2d.src = mp4 || '';
+      document.getElementById('t2d').textContent = title;
+      ov2d.style.display = 'block';
+      v2d.play().catch(() => toast('Tap to start video'));
+    });
+
+    document.querySelector('[data-close="ov2d"]').onclick = () => {
+      v2d.pause();
+      v2d.src = '';
+      ov2d.style.display = 'none';
+    };
+
+    // YouTube Player Setup
+    const ovYT = document.getElementById('ovYT');
+    const yt = document.getElementById('yt');
+    
+    document.getElementById('openYT').addEventListener('click', (e) => {
+      e.preventDefault();
+      yt.src = `https://www.youtube.com/embed/${YT_ID}?autoplay=1&modestbranding=1&rel=0&playsinline=1`;
+      ovYT.style.display = 'block';
+    });
+
+    document.querySelector('[data-close="ovYT"]').onclick = () => {
+      yt.src = '';
+      ovYT.style.display = 'none';
+    };
+
+    // VR/3D Theater Variables
+    let renderer, scene, camera, controls, screen, videoEl, videoTex;
+    const xrWrap = document.getElementById('xrWrap');
+    
+    document.getElementById('xrClose').onclick = () => {
+      try {
+        renderer.setAnimationLoop(null);
+      } catch {}
+      if (videoEl) {
+        videoEl.pause();
+        videoEl.src = '';
+      }
+      xrWrap.style.display = 'none';
+    };
+
+    // Custom Device Orientation Controls for Mobile
+    class MobileOrientationControls {
+      constructor(camera) {
+        this.camera = camera;
+        this.enabled = false;
+        this.deviceOrientation = {};
+        this.screenOrientation = 0;
+        
+        this.alphaOffset = 0;
+        this.betaOffset = 0;
+        this.gammaOffset = 0;
+        
+        this.onDeviceOrientationChangeEvent = this.onDeviceOrientationChangeEvent.bind(this);
+        this.onScreenOrientationChangeEvent = this.onScreenOrientationChangeEvent.bind(this);
+      }
+
+      connect() {
+        this.onScreenOrientationChangeEvent();
+        
+        if (window.DeviceOrientationEvent) {
+          window.addEventListener('orientationchange', this.onScreenOrientationChangeEvent, false);
+          window.addEventListener('deviceorientation', this.onDeviceOrientationChangeEvent, false);
+          this.enabled = true;
+        }
+      }
+
+      disconnect() {
+        window.removeEventListener('orientationchange', this.onScreenOrientationChangeEvent, false);
+        window.removeEventListener('deviceorientation', this.onDeviceOrientationChangeEvent, false);
+        this.enabled = false;
+      }
+
+      onScreenOrientationChangeEvent() {
+        this.screenOrientation = window.orientation || 0;
+      }
+
+      onDeviceOrientationChangeEvent(event) {
+        if (this.enabled === false) return;
+        
+        this.deviceOrientation.alpha = event.alpha;
+        this.deviceOrientation.beta = event.beta;
+        this.deviceOrientation.gamma = event.gamma;
+      }
+
+      update() {
+        if (this.enabled === false) return;
+
+        const device = this.deviceOrientation;
+        if (device) {
+          const alpha = device.alpha ? THREE.MathUtils.degToRad(device.alpha) + this.alphaOffset : 0;
+          const beta = device.beta ? THREE.MathUtils.degToRad(device.beta) + this.betaOffset : 0;
+          const gamma = device.gamma ? THREE.MathUtils.degToRad(device.gamma) + this.gammaOffset : 0;
+
+          const orient = this.screenOrientation ? THREE.MathUtils.degToRad(this.screenOrientation) : 0;
+
+          const zee = new THREE.Vector3(0, 0, 1);
+          const euler = new THREE.Euler();
+          const q0 = new THREE.Quaternion();
+          const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+
+          euler.set(beta, alpha, -gamma, 'YXZ');
+          this.camera.quaternion.setFromEuler(euler);
+          this.camera.quaternion.multiply(q1);
+          this.camera.quaternion.multiply(q0.setFromAxisAngle(zee, -orient));
+        }
+      }
+    }
+
+    // Build 3D Scene
+    function buildScene() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+      camera.position.set(0, 1.6, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      xrWrap.appendChild(renderer.domElement);
+
+      // Dark space environment
+      const roomGeo = new THREE.SphereGeometry(25, 64, 32);
+      roomGeo.scale(-1, 1, 1);
+      const roomMat = new THREE.MeshBasicMaterial({ 
+        color: 0x0a1020,
+        side: THREE.BackSide
+      });
+      scene.add(new THREE.Mesh(roomGeo, roomMat));
+
+      // Curved cinema screen
+      const radius = 4.5;
+      const height = 3.2;
+      const arc = Math.PI * 0.8;
+      const segs = 64;
+
+      const screenGeo = new THREE.CylinderGeometry(
+        radius, radius, height, segs, 1, true,
+        Math.PI / 2 - arc / 2,
+        arc
+      );
+
+      screen = new THREE.Mesh(
+        screenGeo,
+        new THREE.MeshBasicMaterial({ 
+          color: 0x000000, 
+          side: THREE.BackSide 
+        })
+      );
+      screen.position.set(0, 1.6, 0);
+      scene.add(screen);
+
+      // Ambient lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+      scene.add(ambientLight);
+
+      // Floor glow
+      const glow = new THREE.Mesh(
+        new THREE.RingGeometry(2, 2.5, 64),
+        new THREE.MeshBasicMaterial({ 
+          color: 0x1e5bff, 
+          side: THREE.DoubleSide, 
+          transparent: true, 
+          opacity: 0.15 
+        })
+      );
+      glow.rotation.x = -Math.PI / 2;
+      glow.position.y = 0.01;
+      scene.add(glow);
+
+      // Controls setup
+      if (isMobile()) {
+        controls = new MobileOrientationControls(camera);
+      } else {
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1.6, 0);
+        controls.enableDamping = true;
+        controls.minDistance = 2.5;
+        controls.maxDistance = 8;
+        controls.update();
+      }
+
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Default render loop
+      renderer.setAnimationLoop(() => {
+        if (controls && controls.update) controls.update();
+        renderer.render(scene, camera);
+      });
+    }
+
+    // Request device orientation permission (iOS)
+    async function requestMotionPermission() {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const response = await DeviceOrientationEvent.requestPermission();
+          return response === 'granted';
+        } catch {
+          return false;
+        }
+      }
+      return true; // Android/others usually don't need explicit permission
+    }
+
+    // Attach video to the 3D screen
+    async function attachVideoToScreen() {
+      if (!videoEl) {
+        videoEl = document.createElement('video');
+        videoEl.crossOrigin = 'anonymous';
+        videoEl.playsInline = true;
+        videoEl.setAttribute('webkit-playsinline', '');
+        videoEl.preload = 'auto';
+        videoEl.src = mp4;
+        if (poster) videoEl.poster = poster;
+      }
+      
+      try {
+        await videoEl.play();
+      } catch {
+        toast('Tap screen to start video');
+      }
+      
+      videoTex = new THREE.VideoTexture(videoEl);
+      videoTex.colorSpace = THREE.SRGBColorSpace;
+      screen.material = new THREE.MeshBasicMaterial({ 
+        map: videoTex, 
+        toneMapped: false, 
+        side: THREE.BackSide 
+      });
+    }
+
+    // Start VR Experience
+    async function startVRExperience() {
+      if (!renderer) buildScene();
+      xrWrap.style.display = 'block';
+      
+      await attachVideoToScreen();
+      
+      if (isMobile()) {
+        // Mobile: use orientation controls
+        const hasPermission = await requestMotionPermission();
+        if (hasPermission && controls.connect) {
+          controls.connect();
+          toast('Move your device to look around');
+        } else {
+          toast('3D mode active - use touch to navigate');
+        }
+      } else {
+        // Desktop: try to add VR button
+        if (!document.getElementById('vrbtn')) {
+          const btn = VRButton.createButton(renderer);
+          btn.id = 'vrbtn';
+          btn.className = 'vr-button';
+          document.body.appendChild(btn);
+        }
+      }
+
+      // Start render loop
+      renderer.setAnimationLoop(() => {
+        if (controls && controls.update) controls.update();
+        renderer.render(scene, camera);
+      });
+    }
+
+    // Main hero click handler
+    hero.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      // Check if we're on HTTPS (required for device orientation)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        toast('HTTPS required for VR features');
+        document.getElementById('open2d').click();
+        return;
+      }
+
+      // Try VR/3D experience first
+      if (!inTelegram()) {
+        try {
+          await startVRExperience();
+          return;
+        } catch (error) {
+          console.warn('VR experience failed:', error);
+        }
+      }
+
+      // Fallback to 2D
+      document.getElementById('open2d').click();
+    });
+
+    // Optional deep-link support
+    const q = new URLSearchParams(location.search);
+    const qs = q.get('src');
+    if (qs) {
+      hero.dataset.mp4 = qs;
+      document.getElementById('open2d').click();
+    }
+  </script>
+</body>
+</html>
