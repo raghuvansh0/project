@@ -45,7 +45,7 @@ document.getElementById('xrClose').onclick = ()=>{
   xrWrap.style.display='none';
 };
 
-function buildScene(){
+
   function buildScene() {
   // Scene + camera
   scene = new THREE.Scene();
@@ -93,7 +93,7 @@ function buildScene(){
   scene.add(glow);
 
   // Orbit controls (desktop / fallback). We switch to DeviceOrientationControls in Magic-Window.
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 1.6, 0);            // look at screen center
   controls.enableDamping = true;
   controls.minDistance = 2.2;
