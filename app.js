@@ -1,6 +1,8 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js';
+import { DeviceOrientationControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/DeviceOrientationControls.js';
+
 
 const hero = document.getElementById('hero');
 const mp4  = hero.dataset.mp4;
