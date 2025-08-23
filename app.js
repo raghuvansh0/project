@@ -284,11 +284,11 @@ async function attachVideoToScreen() {
     videoEl.setAttribute('webkit-playsinline', '');
     videoEl.preload = 'auto';
     videoEl.loop = true;
-    videoEl.muted = true;
+    videoEl.muted = true; // Start muted for autoplay
+    videoEl.volume = 0.8; // Set reasonable volume level
     videoEl.crossOrigin = 'anonymous';
     videoEl.setAttribute('playsinline', '');
     videoEl.setAttribute('webkit-playsinline', '');
-    // Add video format attributes for better compatibility
     videoEl.setAttribute('preload', 'metadata');
     
     videoEl.onerror = (e) => {
@@ -310,34 +310,40 @@ async function attachVideoToScreen() {
   try {
     await videoEl.play();
     console.log('Video playing');
+    // Enable sound after successful autoplay
+    videoEl.muted = false;
   } catch (error) {
     console.warn('Video autoplay failed:', error);
-    toast('Tap screen to start video');
+    toast('Tap screen to start video with sound');
     
     const startVideo = () => {
       videoEl.play().then(() => {
         console.log('Video started after user interaction');
-        videoEl.muted = false;
+        videoEl.muted = false; // Unmute after user interaction
+        toast('Video playing with sound');
       }).catch(e => console.error('Video play failed:', e));
       renderer.domElement.removeEventListener('click', startVideo);
     };
     renderer.domElement.addEventListener('click', startVideo);
   }
 
-  // Apply video texture with better format handling
+  // Apply video texture with corrected orientation
   videoTex = new THREE.VideoTexture(videoEl);
   videoTex.colorSpace = THREE.SRGBColorSpace;
   videoTex.minFilter = THREE.LinearFilter;
   videoTex.magFilter = THREE.LinearFilter;
-  videoTex.format = THREE.RGBAFormat; // Changed from RGBFormat to RGBAFormat
-  videoTex.flipY = false; // Important for video textures
-  videoTex.generateMipmaps = false; // Disable mipmaps for video
+  videoTex.format = THREE.RGBAFormat;
+  videoTex.flipY = true; // Changed to true to fix upside-down video
+  videoTex.generateMipmaps = false;
   
-  screen.material = new THREE.MeshBasicMaterial({ 
+  // Create material with corrected UV mapping for proper video orientation
+  const videoMaterial = new THREE.MeshBasicMaterial({ 
     map: videoTex, 
     toneMapped: false, 
     side: THREE.BackSide 
   });
+  
+  screen.material = videoMaterial;
   
   console.log('Video texture applied to screen');
 }
