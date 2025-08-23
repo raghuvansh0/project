@@ -202,7 +202,7 @@ function buildScene() {
   const roomMat = new THREE.MeshBasicMaterial({ color: 0x0a1020 });
   scene.add(new THREE.Mesh(roomGeo, roomMat));
 
-  // Curved theater screen (IMAX-style)
+  // Curved theater screen (IMAX-style) with corrected UV mapping
   const radius = 4.2;
   const height = 3.0;
   const arc = Math.PI * 0.85;
@@ -213,6 +213,14 @@ function buildScene() {
     Math.PI / 2 - arc / 2,
     arc
   );
+
+  // Fix UV mapping to prevent upside-down video
+  const uvAttribute = screenGeo.attributes.uv;
+  const uvArray = uvAttribute.array;
+  for (let i = 0; i < uvArray.length; i += 2) {
+    uvArray[i + 1] = 1.0 - uvArray[i + 1]; // Flip V coordinate
+  }
+  uvAttribute.needsUpdate = true;
 
   screen = new THREE.Mesh(
     screenGeo,
@@ -327,16 +335,16 @@ async function attachVideoToScreen() {
     renderer.domElement.addEventListener('click', startVideo);
   }
 
-  // Apply video texture with corrected orientation
+  // Apply video texture with correct settings
   videoTex = new THREE.VideoTexture(videoEl);
   videoTex.colorSpace = THREE.SRGBColorSpace;
   videoTex.minFilter = THREE.LinearFilter;
   videoTex.magFilter = THREE.LinearFilter;
   videoTex.format = THREE.RGBAFormat;
-  videoTex.flipY = true; // Changed to true to fix upside-down video
+  videoTex.flipY = false; // Keep false since we fixed UVs in geometry
   videoTex.generateMipmaps = false;
   
-  // Create material with corrected UV mapping for proper video orientation
+  // Create material for the screen
   const videoMaterial = new THREE.MeshBasicMaterial({ 
     map: videoTex, 
     toneMapped: false, 
