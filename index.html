@@ -1,870 +1,448 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RV-QUANTUM • Immersive Demo</title>
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+// Constants
+const hero = document.getElementById('hero');
+const mp4 = hero.dataset.mp4;
+const title = hero.dataset.title || 'RV-OTT';
+const poster = hero.dataset.poster || '';
+const YT_ID = 'JVAZGhSdczM';
+
+// Utility Functions
+const toast = (m) => {
+  const el = document.getElementById('toast');
+  el.textContent = m;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2200);
+};
+
+async function xrSupported() {
+  if (!('xr' in navigator)) return false;
+  try {
+    return await navigator.xr.isSessionSupported('immersive-vr');
+  } catch {
+    return false;
+  }
+}
+
+function inTelegram() {
+  return /Telegram/i.test(navigator.userAgent) || (window.Telegram && window.Telegram.WebApp);
+}
+
+function isMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+}
+
+// Media Player Setup
+function setupMediaPlayers() {
+  // 2D Video Player
+  const ov2d = document.getElementById('ov2d');
+  const v2d = document.getElementById('v2d');
+  
+  // Create 2D player button dynamically
+  const open2dBtn = document.createElement('button');
+  open2dBtn.textContent = 'Play 2D';
+  open2dBtn.className = 'btn ghost';
+  open2dBtn.style.cssText = `
+    position: fixed; bottom: 120px; right: 20px; z-index: 999;
+    background: rgba(255,255,255,.08); color: #dfe8ff; border: 0;
+    border-radius: 10px; padding: 10px 14px; font-weight: 700;
+    display: none;
+  `;
+  document.body.appendChild(open2dBtn);
+
+  open2dBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    v2d.src = mp4 || '';
+    document.getElementById('t2d').textContent = title;
+    ov2d.style.display = 'block';
+    v2d.play().catch(() => toast('Tap to start video'));
+  });
+
+  document.querySelector('[data-close="ov2d"]').onclick = () => {
+    v2d.pause();
+    v2d.src = '';
+    ov2d.style.display = 'none';
+  };
+
+  // YouTube Player
+  const ovYT = document.getElementById('ovYT');
+  const yt = document.getElementById('yt');
+
+  // Create YouTube player button dynamically
+  const openYTBtn = document.createElement('button');
+  openYTBtn.textContent = 'YouTube';
+  openYTBtn.className = 'btn ghost';
+  openYTBtn.style.cssText = `
+    position: fixed; bottom: 80px; right: 20px; z-index: 999;
+    background: rgba(255,255,255,.08); color: #dfe8ff; border: 0;
+    border-radius: 10px; padding: 10px 14px; font-weight: 700;
+    display: none;
+  `;
+  document.body.appendChild(openYTBtn);
+
+  openYTBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    yt.src = `https://www.youtube.com/embed/${YT_ID}?autoplay=1&modestbranding=1&rel=0&playsinline=1`;
+    ovYT.style.display = 'block';
+  });
+
+  document.querySelector('[data-close="ovYT"]').onclick = () => {
+    yt.src = '';
+    ovYT.style.display = 'none';
+  };
+
+  return { open2dBtn, openYTBtn };
+}
+
+// VR/XR Theater Setup
+let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
+const xrWrap = document.getElementById('xrWrap');
+
+document.getElementById('xrClose').onclick = () => {
+  try {
+    renderer.setAnimationLoop(null);
+  } catch {}
+  if (videoEl) {
+    videoEl.pause();
+    videoEl.src = '';
+  }
+  if (mwControls && mwControls.disconnect) {
+    mwControls.disconnect();
+  }
+  xrWrap.style.display = 'none';
+};
+
+// Custom Device Orientation Controls for Mobile VR
+class MobileOrientationControls {
+  constructor(camera) {
+    this.camera = camera;
+    this.enabled = false;
+    this.deviceOrientation = {};
+    this.screenOrientation = 0;
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    this.alphaOffset = 0;
+    this.betaOffset = 0;
+    this.gammaOffset = 0;
+    
+    this.onDeviceOrientationChangeEvent = this.onDeviceOrientationChangeEvent.bind(this);
+    this.onScreenOrientationChangeEvent = this.onScreenOrientationChangeEvent.bind(this);
+  }
 
-        @font-face {
-        font-family: 'Exo 2';
-        src: url('Exo_2-font/static/Exo2-LightItalic.ttf') format('truetype');
-        font-weight: 650;
-        font-style: normal;
-        }
- 
-        @font-face {
-        font-family: 'Orbitron';
-        src: url('Orbitron/static/Orbitron-Bold.ttf') format('truetype');
-        font-weight: 450;
-        font-style: normal;
-        }
-        @font-face {
-        font-family: 'Alegreya SC';
-        src: url('Alegreya_SC-font/AlegreyaSC-Bold.ttf') format('truetype');
-        font-weight: bold;
-        font-style: normal;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            color: #ffffff;
-        }
-
-        .phone-mockup {
-            width: 100%;
-            max-width: 380px;
-            height: 820px;
-            background: #000;
-            border-radius: 45px;
-            padding: 10px;
-            box-shadow: 0 0 80px rgba(56, 182, 255, 0.3),
-                        0 0 40px rgba(56, 182, 255, 0.2),
-                        inset 0 0 2px rgba(255, 255, 255, 0.1);
-            border: 2px solid #2a4a7c;
-            position: relative;
-        }
-
-        .phone-screen {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(180deg, #0a0e27 0%, #0d1117 100%);
-            border-radius: 35px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .notch {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 150px;
-            height: 28px;
-            background: #000;
-            border-radius: 0 0 20px 20px;
-            z-index: 10;
-        }
-
-        .app-container {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 40px 20px 0;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            margin-bottom: 20px;
-        }
-
-        .app-title {
-            font-family: 'Exo 2', sans-serif;
-            font-size: 24px;
-            font-weight: bold;
-            letter-spacing: 0.75px;
-            background: linear-gradient(90deg, #38b6ff, #4a7c9e);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 6px rgba(56,182,255,0.4);        
-        }
-
-        .header-icons {
-            display: flex;
-            gap: 20px;
-        }
-
-        .icon-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: transparent;
-            border: 2px solid #4a7c9e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .icon-btn:hover {
-            background: rgba(56, 182, 255, 0.1);
-            border-color: #38b6ff;
-        }
-
-        .search-icon::before {
-            content: '';
-            width: 16px;
-            height: 16px;
-            border: 2px solid #fff;
-            border-radius: 50%;
-            display: block;
-            position: relative;
-        }
-
-        .search-icon::after {
-            content: '';
-            position: absolute;
-            width: 2px;
-            height: 8px;
-            background: #fff;
-            transform: rotate(-45deg);
-            right: 10px;
-            bottom: 10px;
-        }
-
-        .profile-icon::before {
-            content: '';
-            width: 20px;
-            height: 20px;
-            background: #4a7c9e;
-            border-radius: 50%;
-            display: block;
-            position: relative;
-            background: linear-gradient(135deg, #38b6ff, #4a7c9e);
-        }
-
-        .profile-icon::after {
-            content: '';
-            position: absolute;
-            width: 30px;
-            height: 15px;
-            background: linear-gradient(135deg, #38b6ff, #4a7c9e);
-            border-radius: 50px 50px 0 0;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .content-area {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 70px;
-        }
-
-        .content-area::-webkit-scrollbar {
-            width: 0;
-        }
-
-        .section-title, .category-title {
-          font-family:'Alegreya SC', serif;
-          font-size:25px;
-          letter-spacing: 1.5px;
-          background:linear-gradient(90deg,#00f9ff,#007bff);
-          -webkit-background-clip:text;
-          -webkit-text-fill-color:transparent;
-          text-shadow:0 0 12px rgba(56,182,255,.4);
-        }
-
-        .hero-banner {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, #1a3a52 0%, #0a1929 100%);
-            border-radius: 20px;
-            margin-bottom: 25px;
-            position: relative;
-            overflow: hidden;
-            border: 1px solid #2a4a7c;
-            cursor: pointer;
-        }
-
-        .hero-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.9;
-        }
-
-        .hero-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 60%;
-            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-        }
-
-        .hero-play-button{
-            position:absolute; 
-            inset:auto 0 16px 0; 
-            margin:auto; 
-            width:56px; 
-            height:56px;
-            background:rgba(56,182,255,.85); 
-            border-radius:50%; 
-            display:flex; 
-            align-items:center; 
-            justify-content:center;
-            box-shadow:0 8px 28px rgba(56,182,255,.35);
-            animation: pulseGlow 2.5s infinite alternate;
-        }
-        .hero-play-button .play-icon{
-            width:0;
-            height:0;
-            border-left:14px solid #fff;
-            border-top:9px solid transparent;
-            border-bottom:9px solid transparent;
-            margin-left:3px;
-        }
-        @keyframes pulseGlow {
-            from { box-shadow: 0 0 15px rgba(56,182,255,0.4); }
-            to   { box-shadow: 0 0 30px rgba(56,182,255,0.8); }
-        }
-
-        .tagline{
-            font-family:'Orbitron', sans-serif;
-            font-weight:700; 
-            font-size:18px; 
-            line-height:1.25; 
-            color:#fff;
-            text-shadow:0 0 8px #38b6ff, 0 0 20px rgba(56,182,255,.5);
-            text-align:center; 
-            letter-spacing:.6px;
-            max-width:300px; 
-            margin:14px auto 26px;
-            animation: taglineGlow 3s ease-in-out infinite alternate;
-        }
-        @keyframes taglineGlow {
-            from { text-shadow: 0 0 4px #38b6ff, 0 0 12px rgba(56,182,255,.3);}
-            to { text-shadow: 0 0 10px #00f9ff, 0 0 25px rgba(0,249,255,.6);}
-        }
-        .tl-neon{
-          background: linear-gradient(90deg,#00f9ff,#007bff);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          text-shadow:
-          0 0 2px rgba(255,255,255,.8),
-          0 0 6px rgba(56,182,255,.35),
-          0 0 16px rgba(56,182,255,.25);
-        }
-
-        .category-section {
-            margin-bottom: 30px;
-        }
-
-        .category-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .arrow-btn {
-            width: 30px;
-            height: 30px;
-            background: transparent;
-            border: none;
-            color: #4a7c9e;
-            font-size: 24px;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .arrow-btn:hover {
-            color: #38b6ff;
-        }
-
-        .content-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        .content-grid::-webkit-scrollbar{ display:none; }
-            
-        .content-card {
-            width: 100%;
-            aspect-ratio: 3/4;
-            background: linear-gradient(135deg, #1a3a52 0%, #0a1929 100%);
-            border-radius: 15px;
-            position: relative;
-            overflow: hidden;
-            border: 1px solid #2a4a7c;
-            cursor: pointer;
-            transition: transform 0.3s ease, border-color 0.3s ease;
-        }
-
-        .content-card:hover {
-            transform: scale(1.05);
-            border-color: #38b6ff;
-        }
-
-        .content-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.85;
-        }
-
-        .play-button {
-            position: absolute;
-            bottom: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 25px;
-            height: 25px;
-            background: rgba(56, 182, 255, 0.9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .play-icon {
-            width: 0;
-            height: 0;
-            border-left: 8px solid white;
-            border-top: 5px solid transparent;
-            border-bottom: 5px solid transparent;
-            margin-left: 2px;
-        }
-
-        /* Bottom Nav Styles */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 72px;
-            background: linear-gradient(180deg, #0d1117, #0a0e27);
-            border-top: 1px solid #2a4a7c;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-        }
-
-        .nav-item{
-            position: relative;
-            flex: 1 1 0;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            gap: 6px;
-            cursor: pointer;
-        }
-
-        .nav-icon{
-            width: 22px; 
-            height: 22px;
-            transform: translateY(2px);
-            filter: drop-shadow(0 0 6px rgba(56,182,255,.18));
-            transition: transform .15s ease, filter .2s ease;
-            position: relative;
-        }
-
-        .nav-item.active .nav-icon{
-            transform: translateY(0);
-            filter: drop-shadow(0 0 10px rgba(56,182,255,.45));
-        }
-        .nav-item.active .nav-label{
-            background: linear-gradient(90deg,#00f9ff,#38b6ff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 8px rgba(56,182,255,.35);
-        }
-
-        .nav-item.active::after{
-            content:'';
-            position:absolute; 
-            bottom:8px;
-            width: 6px; 
-            height: 6px; 
-            border-radius: 50%;
-            background: #38b6ff;
-            box-shadow: 0 0 10px rgba(56,182,255,.6);
-        }
-
-        .nav-item:active::before{
-            content:'';
-            position:absolute; 
-            width:42px; 
-            height:42px; 
-            border-radius:50%;
-            background: radial-gradient(circle, rgba(56,182,255,.25), transparent 60%);
-            transform: scale(0.8);
-        }
-
-        .home-icon::before {
-            content: '';
-            position: absolute;
-            width: 24px;
-            height: 20px;
-            border: 2px solid currentColor;
-            border-bottom: none;
-            clip-path: polygon(50% 0%, 100% 40%, 100% 100%, 0% 100%, 0% 40%);
-        }
-
-        .search-nav-icon::before {
-            content: '';
-            width: 18px;
-            height: 18px;
-            border: 2px solid currentColor;
-            border-radius: 50%;
-            display: block;
-            position: absolute;
-        }
-
-        .search-nav-icon::after {
-            content: '';
-            position: absolute;
-            width: 2px;
-            height: 8px;
-            background: currentColor;
-            transform: rotate(-45deg);
-            right: 0;
-            bottom: 0;
-        }
-
-        .categories-icon::before {
-            content: '';
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            border: 2px solid currentColor;
-            top: 0;
-            left: 0;
-        }
-
-        .categories-icon::after {
-            content: '';
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            border: 2px solid currentColor;
-            top: 0;
-            right: 0;
-        }
-
-        .categories-icon span {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            border: 2px solid currentColor;
-            bottom: 0;
-            left: 0;
-        }
-
-        .categories-icon span::after {
-            content: '';
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            border: 2px solid currentColor;
-            top: 0;
-            right: -2px;
-        }
-
-        .profile-nav-icon::before {
-            content: '';
-            width: 20px;
-            height: 20px;
-            background: currentColor;
-            border-radius: 50%;
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .nav-label{
-            margin-top: 6px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 10px;
-            letter-spacing: .3px;
-            color: #a8c9e8;
-            text-shadow: 0 0 4px rgba(56,182,255,.12);
-            transition: color .2s ease, text-shadow .2s ease;
-        }
-
-        /* VR/Media Player Overlays */
-        .overlay{
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,.95);
-            backdrop-filter:blur(8px);
-            display:none;
-            z-index:1000
-        }
-        .player{
-            position:absolute;
-            left:50%;
-            top:50%;
-            transform:translate(-50%,-50%);
-            width:min(92vw,640px);
-            background:#000;
-            border:2px solid #38b6ff;
-            border-radius:16px;
-            overflow:hidden;
-            box-shadow:0 0 50px rgba(56,182,255,.3)
-        }
-        .player header{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            padding:10px 14px;
-            background:linear-gradient(180deg,#102040,#0a1328);
-            border-bottom:1px solid #2a4a7c
-        }
-        .player iframe,.player video{
-            width:100%;
-            height:360px;
-            border:0;
-            background:#000;
-            display:block
-        }
-        .close{
-            background:transparent;
-            color:#fff;
-            border:0;
-            font-size:22px;
-            cursor:pointer;
-            width:36px;
-            height:36px;
-            border-radius:50%
-        }
-        #xrWrap{
-            position:fixed;
-            inset:0;
-            background:#000;
-            display:none;
-            z-index:1001
-        }
-        #xrToolbar{
-            position:fixed;
-            top:10px;
-            left:10px;
-            z-index:1002;
-            display:flex;
-            gap:8px
-        }
-        #xrClose{
-            border:0;
-            background:rgba(0,0,0,.5);
-            color:#fff;
-            padding:10px 12px;
-            border-radius:10px;
-            border:1px solid rgba(120,160,255,.3);
-            cursor:pointer
-        }
-        #toast{
-            position:fixed;
-            bottom:16px;
-            left:50%;
-            transform:translateX(-50%);
-            background:rgba(20,24,40,.85);
-            border:1px solid rgba(120,160,255,.25);
-            padding:8px 12px;
-            border-radius:10px;
-            font-size:12px;
-            display:none;
-            z-index:1003
-        }
-
-        @media (max-width: 480px) {
-            .phone-mockup {
-                max-width: 100%;
-                height: 100vh;
-                border-radius: 0;
-                padding: 0;
-                border: none;
-            }
-
-            .phone-screen {
-                border-radius: 0;
-            }
-
-            .notch {
-                display: none;
-            }
-
-            .app-container {
-                padding: 20px 15px 0;
-            }
-        }
-
-        @keyframes ripple {
-            0% {
-                transform: scale(0);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 0;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="phone-mockup">
-        <div class="phone-screen">
-            <div class="notch"></div>
-            <div class="app-container">
-                <header class="header">
-                    <h1 class="app-title">RV-QUANTUM</h1>
-                    <div class="header-icons">
-                        <button class="icon-btn search-icon"></button>
-                        <button class="icon-btn profile-icon"></button>
-                    </div>
-                </header>
-
-                <div class="content-area">
-                    <h2 class="section-title">Trending</h2>
-                    
-                    <div id="hero" class="hero-banner" 
-                         data-mp4="https://pub-191e1f0a236e453c9aa97cb44de0e50c.r2.dev/CONCEPT-VIDEO.mp4" 
-                         data-title="Concept Video">
-                        <img src="https://img.youtube.com/vi/JVAZGhSdczM/maxresdefault.jpg" alt="Hero" class="hero-image" />
-                        <div class="hero-overlay"></div>
-                        <div class="hero-play-button"><div class="play-icon"></div></div>
-                    </div>
-
-                    <p class="tagline tl-neon">The Next Dimension of Streaming.</p>
-
-                    <div class="category-section">
-                        <div class="category-header">
-                            <h3 class="category-title">Action</h3>
-                            <button class="arrow-btn">›</button>
-                        </div>
-                        <div class="content-grid">
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/1/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/2/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/3/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/4/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="category-section">
-                        <div class="category-header">
-                            <h3 class="category-title">Drama</h3>
-                            <button class="arrow-btn">›</button>
-                        </div>
-                        <div class="content-grid">
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/5/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/6/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/7/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/8/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="category-section">
-                        <div class="category-header">
-                            <h3 class="category-title">Documentary</h3>
-                            <button class="arrow-btn">›</button>
-                        </div>
-                        <div class="content-grid">
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/9/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/10/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/11/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                            <div class="content-card">
-                                <img src="https://picsum.photos/seed/12/300/400" alt="Content" class="content-image">
-                                <div class="play-button">
-                                    <div class="play-icon"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <nav class="bottom-nav">
-                    <div class="nav-item active">
-                        <div class="nav-icon home-icon"></div>
-                        <span class="nav-label">Home</span>
-                    </div>
-                    <div class="nav-item">
-                        <div class="nav-icon search-nav-icon"></div>
-                        <span class="nav-label">Search</span>
-                    </div>
-                    <div class="nav-item">
-                        <div class="nav-icon categories-icon"><span></span></div>
-                        <span class="nav-label">Categories</span>
-                    </div>
-                    <div class="nav-item">
-                        <div class="nav-icon profile-nav-icon"></div>
-                        <span class="nav-label">Profile</span>
-                    </div>
-                </nav>
-            </div>
-        </div>
-    </div>
-
-    <!-- VR/Media Player Overlays -->
-    <div id="ov2d" class="overlay" role="dialog" aria-modal="true">
-        <div class="player">
-            <header><strong id="t2d">Playing</strong><button class="close" data-close="ov2d">✕</button></header>
-            <video id="v2d" controls playsinline webkit-playsinline></video>
-        </div>
-    </div>
-
-    <div id="ovYT" class="overlay" role="dialog" aria-modal="true">
-        <div class="player">
-            <header><strong>Trailer</strong><button class="close" data-close="ovYT">✕</button></header>
-            <iframe id="yt" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen playsinline></iframe>
-        </div>
-    </div>
-
-    <div id="xrWrap">
-        <div id="xrToolbar">
-            <button id="xrClose">Exit VR</button>
-        </div>
-    </div>
-    <div id="toast"></div>
-
-    <!-- Three.js Import Map -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
+  connect() {
+    this.onScreenOrientationChangeEvent();
+    
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('orientationchange', this.onScreenOrientationChangeEvent, false);
+      window.addEventListener('deviceorientation', this.onDeviceOrientationChangeEvent, false);
+      this.enabled = true;
     }
-    </script>
+  }
 
-    <!-- Main App Script -->
-    <script type="module" src="./app.js"></script>
+  disconnect() {
+    window.removeEventListener('orientationchange', this.onScreenOrientationChangeEvent, false);
+    window.removeEventListener('deviceorientation', this.onDeviceOrientationChangeEvent, false);
+    this.enabled = false;
+  }
 
-    <!-- UI Interaction Script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Navigation active state
-            const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
+  onScreenOrientationChangeEvent() {
+    this.screenOrientation = window.orientation || 0;
+  }
 
-            // Content card hover effect
-            const contentCards = document.querySelectorAll('.content-card');
-            contentCards.forEach(card => {
-                card.addEventListener('click', function() {
-                    // Add ripple effect
-                    const ripple = document.createElement('div');
-                    ripple.style.position = 'absolute';
-                    ripple.style.width = '100%';
-                    ripple.style.height = '100%';
-                    ripple.style.background = 'radial-gradient(circle, rgba(56, 182, 255, 0.3) 0%, transparent 70%)';
-                    ripple.style.top = '0';
-                    ripple.style.left = '0';
-                    ripple.style.animation = 'ripple 0.6s ease-out';
-                    this.appendChild(ripple);
-                    
-                    setTimeout(() => {
-                        ripple.remove();
-                    }, 600);
-                });
-            });
+  onDeviceOrientationChangeEvent(event) {
+    if (this.enabled === false) return;
+    
+    this.deviceOrientation.alpha = event.alpha;
+    this.deviceOrientation.beta = event.beta;
+    this.deviceOrientation.gamma = event.gamma;
+  }
 
-            // Smooth scroll for categories
-            const arrowBtns = document.querySelectorAll('.arrow-btn');
-            arrowBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const grid = this.closest('.category-section').querySelector('.content-grid');
-                    grid.scrollBy({
-                        left: 100,
-                        behavior: 'smooth'
-                    });
-                });
-            });
-        });
-    </script>
-</body>
-</html>
+  update() {
+    if (this.enabled === false) return;
+
+    const device = this.deviceOrientation;
+    if (device && device.alpha !== null && device.beta !== null && device.gamma !== null) {
+      const alpha = THREE.MathUtils.degToRad(device.alpha) + this.alphaOffset;
+      const beta = THREE.MathUtils.degToRad(device.beta) + this.betaOffset;
+      const gamma = THREE.MathUtils.degToRad(device.gamma) + this.gammaOffset;
+
+      const orient = this.screenOrientation ? THREE.MathUtils.degToRad(this.screenOrientation) : 0;
+
+      const zee = new THREE.Vector3(0, 0, 1);
+      const euler = new THREE.Euler();
+      const q0 = new THREE.Quaternion();
+      const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+
+      euler.set(beta, alpha, -gamma, 'YXZ');
+      this.camera.quaternion.setFromEuler(euler);
+      this.camera.quaternion.multiply(q1);
+      this.camera.quaternion.multiply(q0.setFromAxisAngle(zee, -orient));
+    }
+  }
+}
+
+function buildScene() {
+  // Scene + camera
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, 1.6, 0);
+
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  xrWrap.appendChild(renderer.domElement);
+
+  // Dark space environment
+  const roomGeo = new THREE.SphereGeometry(20, 64, 32);
+  roomGeo.scale(-1, 1, 1);
+  const roomMat = new THREE.MeshBasicMaterial({ color: 0x0a1020 });
+  scene.add(new THREE.Mesh(roomGeo, roomMat));
+
+  // Curved theater screen (IMAX-style)
+  const radius = 4.2;
+  const height = 3.0;
+  const arc = Math.PI * 0.85;
+  const segs = 96;
+
+  const screenGeo = new THREE.CylinderGeometry(
+    radius, radius, height, segs, 1, true,
+    Math.PI / 2 - arc / 2,
+    arc
+  );
+
+  screen = new THREE.Mesh(
+    screenGeo,
+    new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide })
+  );
+  screen.position.set(0, 1.6, 0);
+  scene.add(screen);
+
+  // Floor glow for depth
+  const glow = new THREE.Mesh(
+    new THREE.RingGeometry(1.8, 2.2, 64),
+    new THREE.MeshBasicMaterial({ color: 0x1e5bff, side: THREE.DoubleSide, transparent: true, opacity: 0.12 })
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.y = 0.01;
+  scene.add(glow);
+
+  // Controls based on device type
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 1.6, 0);
+  controls.enableDamping = true;
+  controls.minDistance = 2.2;
+  controls.maxDistance = 8;
+  controls.update();
+
+  // Resize handling
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // Default render loop
+  renderer.setAnimationLoop(() => {
+    if (controls) controls.update();
+    renderer.render(scene, camera);
+  });
+}
+
+async function startXR() {
+  if (!renderer) buildScene();
+  xrWrap.style.display = 'block';
+
+  await attachVideoToScreen();
+
+  // Add VR button
+  if (!document.getElementById('vrbtn')) {
+    const btn = VRButton.createButton(renderer);
+    btn.id = 'vrbtn';
+    btn.style.cssText = `
+      position: fixed; right: 10px; bottom: 12px; z-index: 999;
+      background: rgba(56,182,255,.9); color: #fff; border: 0;
+      padding: 12px 16px; border-radius: 8px; font-weight: 700;
+    `;
+    document.body.appendChild(btn);
+  }
+
+  renderer.setAnimationLoop(() => {
+    if (controls) controls.update();
+    renderer.render(scene, camera);
+  });
+}
+
+async function attachVideoToScreen() {
+  if (!videoEl) {
+    videoEl = document.createElement('video');
+    videoEl.crossOrigin = 'anonymous';
+    videoEl.playsInline = true;
+    videoEl.setAttribute('webkit-playsinline', '');
+    videoEl.preload = 'auto';
+    videoEl.loop = true;
+    videoEl.muted = true;
+    videoEl.crossOrigin = 'anonymous';
+    videoEl.setAttribute('playsinline', '');
+    videoEl.setAttribute('webkit-playsinline', '');
+    // Add video format attributes for better compatibility
+    videoEl.setAttribute('preload', 'metadata');
+    
+    videoEl.onerror = (e) => {
+      console.error('Video error:', e);
+      toast('Video failed to load');
+    };
+    
+    videoEl.onloadeddata = () => {
+      console.log('Video loaded successfully');
+      console.log('Video dimensions:', videoEl.videoWidth, 'x', videoEl.videoHeight);
+      console.log('Video format:', videoEl.src);
+      toast('Video ready');
+    };
+    
+    videoEl.src = mp4;
+    if (poster) videoEl.poster = poster;
+  }
+
+  try {
+    await videoEl.play();
+    console.log('Video playing');
+  } catch (error) {
+    console.warn('Video autoplay failed:', error);
+    toast('Tap screen to start video');
+    
+    const startVideo = () => {
+      videoEl.play().then(() => {
+        console.log('Video started after user interaction');
+        videoEl.muted = false;
+      }).catch(e => console.error('Video play failed:', e));
+      renderer.domElement.removeEventListener('click', startVideo);
+    };
+    renderer.domElement.addEventListener('click', startVideo);
+  }
+
+  // Apply video texture with better format handling
+  videoTex = new THREE.VideoTexture(videoEl);
+  videoTex.colorSpace = THREE.SRGBColorSpace;
+  videoTex.minFilter = THREE.LinearFilter;
+  videoTex.magFilter = THREE.LinearFilter;
+  videoTex.format = THREE.RGBAFormat; // Changed from RGBFormat to RGBAFormat
+  videoTex.flipY = false; // Important for video textures
+  videoTex.generateMipmaps = false; // Disable mipmaps for video
+  
+  screen.material = new THREE.MeshBasicMaterial({ 
+    map: videoTex, 
+    toneMapped: false, 
+    side: THREE.BackSide 
+  });
+  
+  console.log('Video texture applied to screen');
+}
+
+async function requestMotionPermission() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const response = await DeviceOrientationEvent.requestPermission();
+      return response === 'granted';
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function startMagicWindow() {
+  if (!renderer) buildScene();
+  xrWrap.style.display = 'block';
+  await attachVideoToScreen();
+
+  // Dispose orbit controls
+  if (controls) {
+    controls.dispose();
+    controls = null;
+  }
+
+  // Mobile orientation controls
+  mwControls = new MobileOrientationControls(camera);
+  mwControls.connect();
+
+  renderer.setAnimationLoop(() => {
+    if (mwControls) mwControls.update();
+    renderer.render(scene, camera);
+  });
+
+  toast('Move your phone to look around');
+}
+
+// Main initialization
+document.addEventListener('DOMContentLoaded', function() {
+  // Setup media players
+  const { open2dBtn, openYTBtn } = setupMediaPlayers();
+
+  // Hero click handler for VR experience
+  hero.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    // Show fallback buttons
+    open2dBtn.style.display = 'block';
+    openYTBtn.style.display = 'block';
+    setTimeout(() => {
+      open2dBtn.style.display = 'none';
+      openYTBtn.style.display = 'none';
+    }, 5000);
+
+    // Check HTTPS requirement
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      toast('HTTPS required for VR features');
+      return;
+    }
+
+    // Try VR/3D experience
+    if (!inTelegram() && await xrSupported()) {
+      try {
+        await startXR();
+        return;
+      } catch (error) {
+        console.error('VR failed:', error);
+      }
+    }
+
+    // Mobile orientation mode
+    if (isMobile()) {
+      const ok = await requestMotionPermission();
+      if (ok) {
+        try {
+          await startMagicWindow();
+          return;
+        } catch (error) {
+          console.error('Magic Window failed:', error);
+        }
+      }
+    } else {
+      // Desktop VR mode
+      try {
+        await startXR();
+        return;
+      } catch (error) {
+        console.error('Desktop VR failed:', error);
+      }
+    }
+
+    // Ultimate fallback - show YouTube player
+    const yt = document.getElementById('yt');
+    const ovYT = document.getElementById('ovYT');
+    yt.src = `https://www.youtube.com/embed/${YT_ID}?autoplay=1&modestbranding=1&rel=0&playsinline=1`;
+    ovYT.style.display = 'block';
+  });
+
+  // Deep-link support
+  const q = new URLSearchParams(location.search);
+  const qs = q.get('src');
+  if (qs) {
+    hero.dataset.mp4 = qs;
+  }
+});
