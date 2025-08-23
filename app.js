@@ -285,6 +285,11 @@ async function attachVideoToScreen() {
     videoEl.preload = 'auto';
     videoEl.loop = true;
     videoEl.muted = true;
+    videoEl.crossOrigin = 'anonymous';
+    videoEl.setAttribute('playsinline', '');
+    videoEl.setAttribute('webkit-playsinline', '');
+    // Add video format attributes for better compatibility
+    videoEl.setAttribute('preload', 'metadata');
     
     videoEl.onerror = (e) => {
       console.error('Video error:', e);
@@ -293,6 +298,8 @@ async function attachVideoToScreen() {
     
     videoEl.onloadeddata = () => {
       console.log('Video loaded successfully');
+      console.log('Video dimensions:', videoEl.videoWidth, 'x', videoEl.videoHeight);
+      console.log('Video format:', videoEl.src);
       toast('Video ready');
     };
     
@@ -317,12 +324,14 @@ async function attachVideoToScreen() {
     renderer.domElement.addEventListener('click', startVideo);
   }
 
-  // Apply video texture
+  // Apply video texture with better format handling
   videoTex = new THREE.VideoTexture(videoEl);
   videoTex.colorSpace = THREE.SRGBColorSpace;
   videoTex.minFilter = THREE.LinearFilter;
   videoTex.magFilter = THREE.LinearFilter;
-  videoTex.format = THREE.RGBFormat;
+  videoTex.format = THREE.RGBAFormat; // Changed from RGBFormat to RGBAFormat
+  videoTex.flipY = false; // Important for video textures
+  videoTex.generateMipmaps = false; // Disable mipmaps for video
   
   screen.material = new THREE.MeshBasicMaterial({ 
     map: videoTex, 
