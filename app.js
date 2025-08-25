@@ -777,4 +777,4 @@ async function attachVideoToScreen() {
         videoEl.muted = false;
         toast('Video playing with sound');
       }).catch(e => console.error('Video play failed:', e));
-      renderer.domElement.removeEventListener;
+      renderer.domElement.removeEventListener
