@@ -420,13 +420,10 @@ function buildTheaterScreen(mode = 'phone') {
     console.log('Created Flat Screen Geometry with fixed UV coordinates');
   }
   else {
-    // use a sphere segment for immersive mode
+    // use a sphere segment for IMMERSIVE mode
     const radius = config.screenDistance;
     const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
     const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
-    
-    //const arc = THREE.MathUtils.degToRad(config.screenCurve);
-    //const segs = Math.max(48, Math.floor(config.screenCurve * 1.5));
     
     screenGeo = new THREE.SphereGeometry(
       radius,
@@ -437,20 +434,14 @@ function buildTheaterScreen(mode = 'phone') {
       thetaLength              // thetaLength
     );
   
-
-    materialSide = THREE.FrontSide; //view inside sphere segment 
+    //✅ we are *inside* the segment → render its inside
+    materialSide = THREE.BackSide;
     
-    // Fix UVs (flip vertically so video isn't upside down)
-    const uvAttr = screenGeo.attributes.uv;
-    for (let i=0; i<uvAttr.array.length; i+=2) {
-      uvAttr.array[i+1] = 1.0 - uvAttr.array[i+1];
-    }
-    uvAttr.needsUpdate = true;
     console.log('Created immersive sphere segment with', config.screenCurve, 'degrees horizontal curve');
    }
   
   // Create screen with visible placeholder material
-  const placeholderMaterial = new THREE.MeshBasicMaterial({
+    const placeholderMaterial = new THREE.MeshBasicMaterial({
     color: 0x333333,  // Dark grey instead of red
     side: materialSide,
     transparent: false
@@ -460,7 +451,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    //screen.rotation.y = Math.PI; //rotate 180 deg to face camera
+    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
     console.log("Rotated curved screen 180° to face camera");
   }
   scene.add(screen);
