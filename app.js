@@ -30,9 +30,9 @@ const COMFORT_MODES = {
     screenPosition: [0, 1.6, 0]       // Screen curves around camera
   },
   desktop: {
-    screenDistance: 3.0,    // Optimized for laptop screen size
-    screenCurve: 100,       // Full wrap-around for immersion
-    fov: 95,
+    screenDistance: 4.5,    // Optimized for laptop screen size
+    screenCurve: 80,       // Full wrap-around for immersion
+    fov: 85,
     yawOnly: false,
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
@@ -411,8 +411,15 @@ function buildTheaterScreen(mode = 'phone') {
     // Flat screen for comfort mode
     screenGeo = new THREE.PlaneGeometry(6, 3.375, 32, 18); // 16:9 ratio, bigger
     materialSide = THREE.FrontSide;
-    console.log('Created Flat Screen Geometry');
-  } else {
+    // Fixed : Flip UV coordinates to fix upside-down video
+    const uvAttr = screenGeo.attributes.uv;
+    for (let i=0;i < uvAttr.array.length; i+=2){
+      uvAttr.array[i+1] = 1 - uvAttr.array[i+1]; //flip Y coordinate
+    }
+    uvAttr.needsUpdate=true;
+    console.log('Created Flat Screen Geometry with fixed UV coordinates');
+  }
+  else {
     // Curved screen - PROPERLY immersive now
     const radius = config.screenDistance;
     const arc = THREE.MathUtils.degToRad(config.screenCurve);
@@ -422,7 +429,8 @@ function buildTheaterScreen(mode = 'phone') {
       radius, radius, 3.375, segs, 1, true,
       Math.PI / 2 - arc / 2, arc
     );
-    
+  
+
     materialSide = THREE.BackSide; // Inside of cylinder
     
     // Fix UV mapping for proper video orientation
@@ -444,8 +452,13 @@ function buildTheaterScreen(mode = 'phone') {
   
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
   screen.position.set(...config.screenPosition);
+  // FIXED : Rotate curved screens 180 deg to face camera
+  if (config.screenCurve!==0) {
+    screen.rotation.y = Math.PI; //rotate 180 deg to face camera
+    console.log("Rotated curved screen 180° to face camera");
+  }
   scene.add(screen);
-  
+
   // Update camera FOV for proper immersion
   camera.fov = config.fov;
   camera.updateProjectionMatrix();
@@ -629,7 +642,7 @@ function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
   
   // CRITICAL FIX: Proper texture settings to avoid WebGL errors
-  texture.flipY = false;
+  texture.flipY = true;
   //texture.format = THREE.RGBAFormat;     // FIXED: Use RGB format ; Let Three.js auto detect
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
