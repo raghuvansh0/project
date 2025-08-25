@@ -214,10 +214,27 @@ function enhanceXRToolbar() {
   });
   
   recenterBtn.addEventListener('click', () => {
-    recenterToTheater();
+    if(mwControls) {
+      //Mobile : just reset rotation
+      camera.rotation.set(0,0,0);
+      camera.position.set(0,1.6,0);
+    } else if (controls) {
+      //Desktop : simple reset that actually works
+      const config = COMFORT_MODES[currentMode];
+      camera.position.set(0, 1.6, config.screenDistance);
+      controls.target.set(0,1.6,config.screenCurve=== 0 ? -2 : 0)
+      controls.update();
+    }
     toast('View recentered');
   });
 }
+
+/* 3. KEEP everything else exactly as it was in your working version
+  The key insight: 
+- Comfort mode (flat): screen at Z=-2, camera at Z=0
+- Cinema/Immersive (curved): screen at Z=0, camera at Z=3.8/3.2
+This way the video stays visible and properly oriented 
+*/
 
 // Fixed recenter function
 function recenterToTheater() {
@@ -407,17 +424,17 @@ function buildTheaterScreen(mode = 'phone') {
   
   if (config.screenCurve === 0) {
     // Flat screen
-    screenGeo = new THREE.PlaneGeometry(3.2, 1.8, 32, 18); // 16:9 ratio
+    screenGeo = new THREE.PlaneGeometry(4.8, 2.7, 32, 18); // 16:9 ratio
     materialSide = THREE.FrontSide;
     console.log('Created Flat Screen Geometry');
   } else {
     // Curved screen - positioned differently
-    const radius = 2.5; // Fixed radius for consistent curvature
+    const radius = config.screenDistance; // Fixed radius for consistent curvature
     const arc = THREE.MathUtils.degToRad(config.screenCurve);
-    const segs = Math.max(32, Math.floor(config.screenCurve * 1.5));
+    const segs = Math.max(32, Math.floor(config.screenCurve * 2));
     
     screenGeo = new THREE.CylinderGeometry(
-      radius, radius, 1.8, segs, 1, true,
+      radius, radius, 2.7, segs, 1, true,
       Math.PI / 2 - arc / 2, arc
     );
     
@@ -435,16 +452,19 @@ function buildTheaterScreen(mode = 'phone') {
   
   // Create screen with placeholder material
   const placeholderMaterial = new THREE.MeshBasicMaterial({
-    color: 0x444444,
+    color: 0x333333,
     side: materialSide,
     transparent: true,
-    opacity: 0.7
+    opacity: 0.8
   });
   
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
-  
   // CRITICAL FIX: Position screen at origin, camera behind it
-  screen.position.set(...config.screenPosition);
+  if (config.screenCurve==0) {
+    screen.position.set(0,1.6,-2) //Flat screen 2m in front
+  } else {
+    screen.position.set(0,1.6,0);
+  }
   scene.add(screen);
   
   // Update camera FOV
@@ -452,12 +472,11 @@ function buildTheaterScreen(mode = 'phone') {
   camera.updateProjectionMatrix();
   
   console.log(`Built ${config.name} theater:`, {
-    screenPos: config.screenPosition,
-    cameraPos: config.cameraPosition,
     distance: config.screenDistance,
     curve: config.screenCurve,
     fov: config.fov,
-    side: materialSide === THREE.FrontSide ? 'FrontSide' : 'BackSide'
+    position:screen.position,
+    side: materialSide
   });
   
   return screen;
