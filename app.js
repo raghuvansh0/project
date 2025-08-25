@@ -85,10 +85,12 @@ function isTablet() {
 }
 
 function detectBestMode() {
-  // Optimized for ASUS ZenBook Duo touchscreen laptop
-  if (window.innerWidth >= 1200) return 'desktop';  // Full immersive for laptop
-  if (window.innerWidth >= 900) return 'tablet';    // Cinema mode for smaller windows
-  return 'phone';  // Comfort fallback
+  // Force desktop for Zenbook Duo testing
+  console.log('ZenBook Duo: Forcing desktop mode, window width:', window.innerWidth);
+  return 'desktop';  // Always return desktop for your testing
+  //if (window.innerWidth >= 1200) return 'desktop';  // Full immersive for laptop
+  //if (window.innerWidth >= 900) return 'tablet';    // Cinema mode for smaller windows
+  //return 'phone';  // Comfort fallback
 }
 
 // Enhanced Media Player Setup
@@ -635,7 +637,7 @@ function createVideoTexture(videoElement) {
   
   // CRITICAL FIX: Proper texture settings to avoid WebGL errors
   texture.flipY = false;
-  texture.format = THREE.RGBFormat;     // FIXED: Use RGB format
+  //texture.format = THREE.RGBAFormat;     // FIXED: Use RGB format ; Let Three.js auto detect
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -727,6 +729,7 @@ async function attachVideoToScreen() {
       // Create texture when video is ready
       if (!videoTex) {
         videoTex = createVideoTexture(videoEl);
+        videoTex.needsUpdate=true;
         
         // Apply to screen immediately
         const config = COMFORT_MODES[currentMode];
@@ -765,8 +768,8 @@ async function attachVideoToScreen() {
     console.warn('Video autoplay failed:', error.message);
     toast('Click screen to start video with sound');
     
-    const startVideo = () => {
-      videoEl.play().then(() => {
+        const startVideo = () => {
+        videoEl.play().then(() => {
         console.log('✅ Video started after user interaction');
         videoEl.muted = false;
         toast('Video playing with sound');
