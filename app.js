@@ -9,20 +9,20 @@ const title = hero.dataset.title || 'RV-OTT';
 const poster = hero.dataset.poster || '';
 const YT_ID = 'JVAZGhSdczM';
 
-// FIXED Comfort Mode Settings with proper immersive positioning
+// ASUS ZenBook Duo optimized comfort modes
 const COMFORT_MODES = {
   phone: {
     screenDistance: 2.5,
     screenCurve: 0,         // Flat screen
-    fov: 75,
+    fov: 70,                // Comfortable for laptop screen
     yawOnly: true,
     name: 'Comfort',
     cameraPosition: [0, 1.6, 0],      // Camera at center
     screenPosition: [0, 1.6, -2.5]     // Screen in front
   },
   tablet: {
-    screenDistance: 4.0,    // Curved screen radius
-    screenCurve: 60,        // More immersive curve
+    screenDistance: 3.5,    // Curved screen radius
+    screenCurve: 70,        // Good curve for laptop viewing
     fov: 85,
     yawOnly: false,
     name: 'Cinema',
@@ -30,8 +30,8 @@ const COMFORT_MODES = {
     screenPosition: [0, 1.6, 0]       // Screen curves around camera
   },
   desktop: {
-    screenDistance: 3.5,    // Curved screen radius
-    screenCurve: 90,        // Very immersive wrap-around
+    screenDistance: 3.0,    // Optimized for laptop screen size
+    screenCurve: 100,       // Full wrap-around for immersion
     fov: 95,
     yawOnly: false,
     name: 'Immersive',
@@ -707,12 +707,6 @@ async function attachVideoToScreen() {
     videoEl.muted = true;
     videoEl.volume = 0.8;
     
-    // Mobile-specific video settings
-    if (isMobile()) {
-      videoEl.setAttribute('webkit-playsinline', 'true');
-      videoEl.setAttribute('x-webkit-airplay', 'deny');
-    }
-    
     videoEl.onerror = (e) => {
       console.error('Video error:', e, videoEl.error);
       toast('Video failed to load');
@@ -777,4 +771,120 @@ async function attachVideoToScreen() {
         videoEl.muted = false;
         toast('Video playing with sound');
       }).catch(e => console.error('Video play failed:', e));
-      renderer.domElement.removeEventListener
+      renderer.domElement.removeEventListener('click', startVideo);
+    };
+    renderer.domElement.addEventListener('click', startVideo);
+  }
+}
+
+async function requestMotionPermission() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const response = await DeviceOrientationEvent.requestPermission();
+      console.log('Device orientation permission:', response);
+      return response === 'granted';
+    } catch (error) {
+      console.error('Motion permission error:', error);
+      return false;
+    }
+  }
+  return true;
+}
+
+async function startMagicWindow() {
+  console.log('📱 Starting Magic Window mode...');
+  
+  if (!renderer) buildScene();
+  xrWrap.style.display = 'block';
+  await attachVideoToScreen();
+
+  // Dispose orbit controls for mobile
+  if (controls) {
+    controls.dispose();
+    controls = null;
+  }
+
+  // Setup mobile orientation controls
+  const config = COMFORT_MODES[currentMode];
+  mwControls = new MobileOrientationControls(camera, config.yawOnly);
+  const connected = await mwControls.connect();
+  
+  if (!connected) {
+    console.warn('Failed to connect mobile orientation controls');
+    toast('Touch controls available - swipe to look around');
+  }
+
+  // Render loop for mobile
+  renderer.setAnimationLoop(() => {
+    if (mwControls) mwControls.update();
+    renderer.render(scene, camera);
+  });
+
+  const modeText = config.yawOnly ? ' (yaw only for comfort)' : '';
+  toast(`${config.name} mode: ${connected ? 'move your phone' : 'touch and drag'} to look around${modeText}`);
+  
+  logPositions('After Magic Window Start');
+}
+
+// Main initialization
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🎯 App initializing...');
+  
+  // Setup enhanced media players
+  const { controlPanel } = setupMediaPlayers();
+
+  // Enhanced hero click handler
+  hero.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    // Auto-detect best mode for ASUS ZenBook Duo
+    currentMode = detectBestMode();
+    console.log('Detected best mode for ZenBook Duo:', currentMode);
+    
+    // Show control panel
+    controlPanel.style.display = 'block';
+    document.getElementById('currentMode').textContent = COMFORT_MODES[currentMode].name;
+    
+    // Hide panel after 8 seconds
+    setTimeout(() => {
+      controlPanel.style.display = 'none';
+    }, 8000);
+
+    // Check HTTPS requirement
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      toast('HTTPS required for VR features');
+      return;
+    }
+  });
+
+  // FIXED Enter Theater button handler - optimized for laptop
+  document.addEventListener('click', async (e) => {
+    if (e.target.id === 'enterTheater') {
+      e.preventDefault();
+      document.getElementById('theaterControls').style.display = 'none';
+      
+      console.log('🎭 Entering theater mode on ASUS ZenBook Duo...');
+
+      // For laptop testing, always go to XR mode (desktop behavior)
+      try {
+        console.log('Starting XR mode for laptop...');
+        await startXR();
+        return;
+      } catch (error) {
+        console.error('XR failed:', error);
+        toast('Theater mode failed - check console for details');
+      }
+    }
+  });
+
+  // Deep-link support
+  const q = new URLSearchParams(location.search);
+  const qs = q.get('src');
+  if (qs) {
+    hero.dataset.mp4 = qs;
+    console.log('Using custom video source:', qs);
+  }
+  
+  console.log('✅ App initialized successfully for ASUS ZenBook Duo');
+});
