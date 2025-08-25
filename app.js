@@ -420,28 +420,34 @@ function buildTheaterScreen(mode = 'phone') {
     console.log('Created Flat Screen Geometry with fixed UV coordinates');
   }
   else {
-    // Curved screen - PROPERLY immersive now
+    // use a sphere segment for immersive mode
     const radius = config.screenDistance;
-    const arc = THREE.MathUtils.degToRad(config.screenCurve);
-    const segs = Math.max(48, Math.floor(config.screenCurve * 1.5));
+    const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
+    const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
     
-    screenGeo = new THREE.CylinderGeometry(
-      radius, radius, 3.375, segs, 1, true,
-      Math.PI / 2 - arc / 2, arc
+    //const arc = THREE.MathUtils.degToRad(config.screenCurve);
+    //const segs = Math.max(48, Math.floor(config.screenCurve * 1.5));
+    
+    screenGeo = new THREE.SphereGeometry(
+      radius,
+      64, 64,
+      Math.PI/2 - phiLength/2, // phiStart: center forward
+      phiLength,               // phiLength
+      Math.PI/2 - thetaLength/2, // thetaStart: tilt vertical window
+      thetaLength              // thetaLength
     );
   
 
-    materialSide = THREE.BackSide; // Inside of cylinder
+    materialSide = THREE.FrontSide; //view inside sphere segment 
     
-    // Fix UV mapping for proper video orientation
-    const uvAttribute = screenGeo.attributes.uv;
-    const uvArray = uvAttribute.array;
-    for (let i = 0; i < uvArray.length; i += 2) {
-      uvArray[i + 1] = 1.0 - uvArray[i + 1]; // Flip V
+    // Fix UVs (flip vertically so video isn't upside down)
+    const uvAttr = screenGeo.attributes.uv;
+    for (let i=0; i<uvAttr.array.length; i+=2) {
+      uvAttr.array[i+1] = 1.0 - uvAttr.array[i+1];
     }
-    uvAttribute.needsUpdate = true;
-    console.log('Created curved screen geometry with', config.screenCurve, 'degrees curve');
-  }
+    uvAttr.needsUpdate = true;
+    console.log('Created immersive sphere segment with', config.screenCurve, 'degrees horizontal curve');
+   }
   
   // Create screen with visible placeholder material
   const placeholderMaterial = new THREE.MeshBasicMaterial({
