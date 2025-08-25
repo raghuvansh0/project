@@ -436,6 +436,12 @@ function buildTheaterScreen(mode = 'phone') {
   
     //✅ we are *inside* the segment → render its inside
     materialSide = THREE.BackSide;
+    // ✅ flip V for the SPHERE so text is upright in Immersive
+    const uvAttr = screenGeo.attributes.uv;
+    for (let i = 0; i < uvAttr.array.length; i += 2) {
+      uvAttr.array[i + 1] = 1 - uvAttr.array[i + 1];
+  }
+  uvAttr.needsUpdate = true;
     
     console.log('Created immersive sphere segment with', config.screenCurve, 'degrees horizontal curve');
    }
@@ -626,6 +632,8 @@ function rebuildTheaterWithMode(mode) {
     });
     screen.material.dispose();
     screen.material = videoMaterial;
+    // ✅ ensure the recycled texture pushes a fresh frame
+    videoTex.needsUpdate = true;
   }
   
   // Update UI
