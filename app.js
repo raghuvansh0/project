@@ -312,28 +312,68 @@ class MobileOrientationControls {
   }
 }
 
+// Create stars function (moved outside buildScene)
+function createStars() {
+  const starsGeometry = new THREE.BufferGeometry();
+  const starsCount = 1000;
+  const positions = new Float32Array(starsCount * 3);
+
+  for (let i = 0; i < starsCount; i++) {
+    const i3 = i * 3;
+    
+    // Create random positions on sphere surface
+    const radius = 15 + Math.random() * 8;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    
+    positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i3 + 1] = radius * Math.cos(phi);
+    positions[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+  }
+
+  starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  // Fixed material - use small spheres instead of points
+  const starsMaterial = new THREE.PointsMaterial({
+    color: 0xaaaaff,
+    size: 0.1,
+    transparent: true,
+    opacity: 0.8,
+    vertexColors: false,
+    sizeAttenuation: true
+  });
+
+  const stars = new THREE.Points(starsGeometry, starsMaterial);
+  scene.add(stars);
+
+  console.log('Added', starsCount, 'stars to scene');
+  return stars;
+}
+
 function buildTheaterScreen(mode = 'phone') {
   const config = COMFORT_MODES[mode];
   
   // Remove old screen
   if (screen) {
     scene.remove(screen);
-    if (screen.material.map) {
+    if (screen.material && screen.material.map) {
       screen.material.map.dispose();
     }
-    screen.material.dispose();
-    screen.geometry.dispose();
+    if (screen.material) screen.material.dispose();
+    if (screen.geometry) screen.geometry.dispose();
   }
-
+  
   let screenGeo;
+  let materialSide;
   
   if (config.screenCurve === 0) {
     // Flat screen for maximum comfort
-    screenGeo = new THREE.PlaneGeometry(4.8, 2.7, 32, 18); // 16:9 aspect ratio
-    
+    screenGeo = new THREE.PlaneGeometry(4.8, 2.7, 32, 18);
+    materialSide = THREE.FrontSide;
+    console.log('Created Flat Screen Geometry');
   } else {
     // Gently curved screen
-    const radius = config.screenDistance + 1;
+    const radius = config.screenDistance;
     const arc = THREE.MathUtils.degToRad(config.screenCurve);
     const segs = Math.max(32, Math.floor(config.screenCurve * 2));
     
@@ -341,24 +381,28 @@ function buildTheaterScreen(mode = 'phone') {
       radius, radius, 2.7, segs, 1, true,
       Math.PI / 2 - arc / 2, arc
     );
-
+    
+    materialSide = THREE.BackSide;
+    
     // Fix UV mapping for curved screen
     const uvAttribute = screenGeo.attributes.uv;
     const uvArray = uvAttribute.array;
     for (let i = 0; i < uvArray.length; i += 2) {
-      uvArray[i + 1] = 1.0 - uvArray[i + 1]; // Flip V coordinate
+      uvArray[i + 1] = 1.0 - uvArray[i + 1];
     }
     uvAttribute.needsUpdate = true;
+    console.log('Created curved screen geometry with', config.screenCurve, 'degrees curve');
   }
-
-  // Create screen mesh
-  screen = new THREE.Mesh(
-    screenGeo,
-    new THREE.MeshBasicMaterial({ 
-      color: 0x111111, 
-      side: config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide 
-    })
-  );
+  
+  // Create screen with visible placeholder material
+  const placeholderMaterial = new THREE.MeshBasicMaterial({
+    color: 0x333333,
+    side: materialSide,
+    transparent: true,
+    opacity: 0.8
+  });
+  
+  screen = new THREE.Mesh(screenGeo, placeholderMaterial);
   
   // Position screen in front of camera
   screen.position.set(0, 1.6, -config.screenDistance);
@@ -368,10 +412,20 @@ function buildTheaterScreen(mode = 'phone') {
   camera.fov = config.fov;
   camera.updateProjectionMatrix();
   
-  console.log(`Built ${config.name} theater: distance=${config.screenDistance}, curve=${config.screenCurve}°, fov=${config.fov}°`);
+  console.log(`Built ${config.name} theater:`, {
+    distance: config.screenDistance,
+    curve: config.screenCurve,
+    fov: config.fov,
+    position: screen.position,
+    side: materialSide
+  });
+  
+  return screen;
 }
 
 function buildScene() {
+  console.log("Building scene...");
+
   // Scene + camera
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -384,35 +438,16 @@ function buildScene() {
   renderer.xr.enabled = true;
   xrWrap.appendChild(renderer.domElement);
 
-  // Enhanced environment
+  // Dark space environment
   const roomGeo = new THREE.SphereGeometry(25, 64, 32);
   roomGeo.scale(-1, 1, 1);
   const roomMat = new THREE.MeshBasicMaterial({ color: 0x0a1020 });
-  scene.add(new THREE.Mesh(roomGeo, roomMat));
+  const room = new THREE.Mesh(roomGeo, roomMat);
+  scene.add(room);
+  console.log('Added room sphere');
 
-  // Add some subtle stars
-  const starsGeo = new THREE.BufferGeometry();
-  const starsCount = 200;
-  const starsPositions = new Float32Array(starsCount * 3);
-  
-  for (let i = 0; i < starsCount * 3; i += 3) {
-    const radius = 20 + Math.random() * 4;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.random() * Math.PI;
-    
-    starsPositions[i] = radius * Math.sin(phi) * Math.cos(theta);
-    starsPositions[i + 1] = radius * Math.cos(phi);
-    starsPositions[i + 2] = radius * Math.sin(phi) * Math.sin(theta);
-  }
-  
-  starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
-  const starsMat = new THREE.PointsMaterial({ 
-    color: 0x88bbff, 
-    size: 2, 
-    transparent: true, 
-    opacity: 0.6 
-  });
-  scene.add(new THREE.Points(starsGeo, starsMat));
+  // Add working stars
+  createStars();
 
   // Build screen based on detected mode
   currentMode = detectBestMode();
@@ -421,44 +456,46 @@ function buildScene() {
   // Enhanced floor glow
   const glow = new THREE.Mesh(
     new THREE.RingGeometry(2.2, 2.8, 64),
-    new THREE.MeshBasicMaterial({ 
-      color: 0x1e5bff, 
-      side: THREE.DoubleSide, 
-      transparent: true, 
-      opacity: 0.15 
+    new THREE.MeshBasicMaterial({
+      color: 0x1e5bff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.15
     })
   );
   glow.rotation.x = -Math.PI / 2;
   glow.position.y = 0.01;
   scene.add(glow);
+  console.log('Added floor glow');
 
   // Add subtle ambient lighting effect
   const ambientRing = new THREE.Mesh(
     new THREE.RingGeometry(3.5, 4, 32),
-    new THREE.MeshBasicMaterial({ 
-      color: 0x4488ff, 
-      side: THREE.DoubleSide, 
-      transparent: true, 
-      opacity: 0.05 
+    new THREE.MeshBasicMaterial({
+      color: 0x4488ff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.05
     })
   );
   ambientRing.rotation.x = -Math.PI / 2;
   ambientRing.position.y = 0.02;
   scene.add(ambientRing);
 
-  // Controls based on device type and mode
+  // Controls setup
   const config = COMFORT_MODES[currentMode];
   controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 1.6, -config.screenDistance);
   controls.enableDamping = true;
   controls.minDistance = 1.5;
-  controls.maxDistance = config.screenDistance + 2;
-  
+  controls.maxDistance = config.screenDistance + 3;
+
   // Limit vertical rotation for comfort
   controls.maxPolarAngle = Math.PI * 0.75;
   controls.minPolarAngle = Math.PI * 0.25;
-  
+
   controls.update();
+  console.log('Setup orbit controls targeting screen at distance:', config.screenDistance);
 
   // Enhanced toolbar
   enhanceXRToolbar();
@@ -475,6 +512,8 @@ function buildScene() {
     if (controls) controls.update();
     renderer.render(scene, camera);
   });
+
+  console.log('Scene built successfully');
 }
 
 function rebuildTheaterWithMode(mode) {
@@ -503,8 +542,15 @@ function rebuildTheaterWithMode(mode) {
 }
 
 async function startXR() {
-  if (!renderer) buildScene();
+  console.log('Starting XR mode...');
+  
+  if (!renderer) {
+    console.log('No renderer found, building scene...');
+    buildScene();
+  }
+  
   xrWrap.style.display = 'block';
+  console.log('XR wrapper displayed');
 
   await attachVideoToScreen();
 
@@ -525,18 +571,28 @@ async function startXR() {
     renderer.render(scene, camera);
   });
   
-  toast(`${COMFORT_MODES[currentMode].name} theater mode active`);
+  const modeName = COMFORT_MODES[currentMode].name;
+  toast(`${modeName} theater mode active`);
+  console.log(`XR started in ${modeName} mode`);
 }
 
 async function attachVideoToScreen() {
+  console.log('Attaching video to screen...');
+  
+  if (!screen) {
+    console.error("No screen found to attach video to!");
+    return;
+  }
+
   if (!videoEl) {
+    console.log('Creating video element...');
     videoEl = document.createElement('video');
     videoEl.crossOrigin = 'anonymous';
     videoEl.playsInline = true;
     videoEl.setAttribute('webkit-playsinline', '');
     videoEl.preload = 'auto';
     videoEl.loop = true;
-    videoEl.muted = true; // Start muted for autoplay
+    videoEl.muted = true;
     videoEl.volume = 0.8;
     
     videoEl.onerror = (e) => {
@@ -545,17 +601,22 @@ async function attachVideoToScreen() {
     };
     
     videoEl.onloadeddata = () => {
-      console.log('Video loaded successfully');
+      console.log('Video loaded successfully', {
+        width: videoEl.videoWidth,
+        height: videoEl.videoHeight,
+        duration: videoEl.duration
+      });
       toast('Video ready - click to unmute');
     };
     
     videoEl.src = mp4;
     if (poster) videoEl.poster = poster;
+    console.log('Video source set to:', mp4);
   }
 
   try {
     await videoEl.play();
-    console.log('Video playing');
+    console.log('Video playing automatically');
   } catch (error) {
     console.warn('Video autoplay failed:', error);
     toast('Tap screen to start video with sound');
@@ -571,7 +632,7 @@ async function attachVideoToScreen() {
     renderer.domElement.addEventListener('click', startVideo);
   }
 
-  // Apply video texture with correct settings
+  // Create video texture
   videoTex = new THREE.VideoTexture(videoEl);
   videoTex.colorSpace = THREE.SRGBColorSpace;
   videoTex.minFilter = THREE.LinearFilter;
@@ -582,14 +643,17 @@ async function attachVideoToScreen() {
   
   // Create material based on current screen type
   const config = COMFORT_MODES[currentMode];
+  const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
+
   const videoMaterial = new THREE.MeshBasicMaterial({ 
     map: videoTex, 
-    toneMapped: false, 
-    side: config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide 
+    toneMapped: false,
+    side: side
   });
   
+  screen.material.dispose();
   screen.material = videoMaterial;
-  console.log('Video texture applied to screen');
+  console.log('Video texture applied to screen with side:', side === THREE.FrontSide ? 'FrontSide' : 'BackSide');
 }
 
 async function requestMotionPermission() {
