@@ -520,7 +520,7 @@ function buildScene() {
   buildTheaterScreen(currentMode);
 
   // Subtle floor glow
-  const glow = new THREE.Mesh(
+    const glow = new THREE.Mesh(
     new THREE.RingGeometry(2, 2.5, 32),
     new THREE.MeshBasicMaterial({
       color: 0x1a4d6b,
@@ -568,7 +568,7 @@ function buildScene() {
   enhanceXRToolbar();
 
   // Resize handling
-  window.addEventListener('resize', () => {
+    window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -578,9 +578,12 @@ function buildScene() {
   renderer.setAnimationLoop(() => {
     if (controls) controls.update();
     if (mwControls) mwControls.update();
-    renderer.render(scene, camera);
+    // Force video texture update
+    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      videoTex.needsUpdate = true;
+  }
+  renderer.render(scene, camera);
   });
-
   console.log('✅ Scene built successfully');
 }
 
