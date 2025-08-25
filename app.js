@@ -75,8 +75,8 @@ function inTelegram() {
 }
 
 function isMobile() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  // ASUS ZenBook Duo specific: treat as desktop even with touch
+  return false; // Force desktop behavior for laptop testing
 }
 
 function isTablet() {
@@ -85,7 +85,11 @@ function isTablet() {
 }
 
 function detectBestMode() {
-  // Optimized for ASUS ZenBook Duo touchscre
+  // Optimized for ASUS ZenBook Duo touchscreen laptop
+  if (window.innerWidth >= 1200) return 'desktop';  // Full immersive for laptop
+  if (window.innerWidth >= 900) return 'tablet';    // Cinema mode for smaller windows
+  return 'phone';  // Comfort fallback
+}
 
 // Enhanced Media Player Setup
 function setupMediaPlayers() {
@@ -455,10 +459,10 @@ function buildTheaterScreen(mode = 'phone') {
   return screen;
 }
 
-// Mobile-optimized renderer
+// ASUS ZenBook Duo optimized renderer
 function createMobileRenderer() {
   const options = {
-    antialias: !isMobile(),
+    antialias: true,        // Enable for laptop quality
     alpha: false,
     stencil: false,
     depth: true,
@@ -470,17 +474,17 @@ function createMobileRenderer() {
 
   const renderer = new THREE.WebGLRenderer(options);
   
-  const pixelRatio = Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2);
+  // High quality for laptop screen
+  const pixelRatio = Math.min(window.devicePixelRatio, 2);
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   
-  if (isMobile()) {
-    renderer.shadowMap.enabled = false;
-    renderer.physicallyCorrectLights = false;
-  }
+  // Enable high-quality features for laptop
+  renderer.shadowMap.enabled = false; // Keep disabled for performance
+  renderer.physicallyCorrectLights = false;
   
-  console.log('Created', isMobile() ? 'mobile-optimized' : 'desktop', 'renderer with pixel ratio:', pixelRatio);
+  console.log('Created ASUS ZenBook Duo optimized renderer with pixel ratio:', pixelRatio);
   return renderer;
 }
 
