@@ -678,8 +678,14 @@ async function startXR() {
   renderer.setAnimationLoop(() => {
     if (controls) controls.update();
     if (mwControls) mwControls.update();
-    renderer.render(scene, camera);
-  });
+  
+    // Force video texture update
+    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+    videoTex.needsUpdate = true;
+  }
+  
+  renderer.render(scene, camera);
+});
   
   const modeName = COMFORT_MODES[currentMode].name;
   toast(`${modeName} theater mode active`);
