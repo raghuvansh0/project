@@ -574,16 +574,6 @@ function buildScene() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Render loop
-  renderer.setAnimationLoop(() => {
-    if (controls) controls.update();
-    if (mwControls) mwControls.update();
-    // Force video texture update
-    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
-      videoTex.needsUpdate = true;
-  }
-  renderer.render(scene, camera);
-  });
   console.log('✅ Scene built successfully');
 }
 
