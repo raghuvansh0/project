@@ -9,32 +9,38 @@ const title = hero.dataset.title || 'RV-OTT';
 const poster = hero.dataset.poster || '';
 const YT_ID = 'JVAZGhSdczM';
 
-// Comfort Mode Settings
+// Fixed Comfort Mode Settings with proper positioning
 const COMFORT_MODES = {
   phone: {
-    screenDistance: 4.5,
-    screenCurve: 0, // Flat screen
-    fov: 55,
+    screenDistance: 3.0,    // Closer for mobile
+    screenCurve: 0,         // Flat screen
+    fov: 60,               // Slightly wider for mobile
     yawOnly: true,
-    name: 'Comfort'
+    name: 'Comfort',
+    cameraPosition: [0, 1.6, 3.5],  // Behind screen
+    screenPosition: [0, 1.6, 0]     // At origin
   },
   tablet: {
-    screenDistance: 3.8,
-    screenCurve: 15, // Gentle curve in degrees
-    fov: 60,
-    yawOnly: false,
-    name: 'Cinema'
-  },
-  desktop: {
-    screenDistance: 3.2,
-    screenCurve: 25, // More immersive curve
+    screenDistance: 2.5,    // Medium distance
+    screenCurve: 15,        // Gentle curve
     fov: 65,
     yawOnly: false,
-    name: 'Immersive'
+    name: 'Cinema',
+    cameraPosition: [0, 1.6, 3.0],
+    screenPosition: [0, 1.6, 0]
+  },
+  desktop: {
+    screenDistance: 2.0,    // Closer for immersion
+    screenCurve: 25,        // More curve
+    fov: 70,
+    yawOnly: false,
+    name: 'Immersive',
+    cameraPosition: [0, 1.6, 2.5],
+    screenPosition: [0, 1.6, 0]
   }
 };
 
-let currentMode = 'phone'; // Default to safest mode
+let currentMode = 'phone';
 
 // Utility Functions
 const toast = (m) => {
@@ -43,6 +49,20 @@ const toast = (m) => {
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 2200);
 };
+
+// Debug position logging
+function logPositions(label) {
+  if (!camera || !controls || !screen) return;
+  console.group(`🎯 Position Debug: ${label}`);
+  console.log('Camera position:', camera.position.toArray());
+  console.log('Controls target:', controls.target.toArray());
+  console.log('Screen position:', screen.position.toArray());
+  console.log('Camera-to-screen distance:', camera.position.distanceTo(screen.position).toFixed(2));
+  console.log('Camera looking at screen:', camera.getWorldDirection(new THREE.Vector3()).dot(
+    new THREE.Vector3().subVectors(screen.position, camera.position).normalize()
+  ).toFixed(2));
+  console.groupEnd();
+}
 
 async function xrSupported() {
   if (!('xr' in navigator)) return false;
@@ -73,13 +93,11 @@ function detectBestMode() {
   return 'desktop';
 }
 
-// Enhanced Media Player Setup with Mode Selection
+// Enhanced Media Player Setup
 function setupMediaPlayers() {
-  // 2D Video Player
   const ov2d = document.getElementById('ov2d');
   const v2d = document.getElementById('v2d');
   
-  // Create improved UI panel
   const controlPanel = document.createElement('div');
   controlPanel.id = 'theaterControls';
   controlPanel.style.cssText = `
@@ -134,7 +152,6 @@ function setupMediaPlayers() {
     ov2d.style.display = 'none';
   };
 
-  // YouTube Player
   const ovYT = document.getElementById('ovYT');
   const yt = document.getElementById('yt');
 
@@ -153,11 +170,11 @@ function setupMediaPlayers() {
   return { controlPanel };
 }
 
-// Enhanced VR/XR Theater Setup
+// Global variables
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
 const xrWrap = document.getElementById('xrWrap');
 
-// Add mode selector to XR toolbar
+// Fixed XR toolbar with proper recenter
 function enhanceXRToolbar() {
   const toolbar = document.getElementById('xrToolbar');
   
@@ -185,12 +202,11 @@ function enhanceXRToolbar() {
     border: 1px solid rgba(120,160,255,.3); cursor: pointer;
   `;
   
-  // Insert before close button
   const closeBtn = document.getElementById('xrClose');
   toolbar.insertBefore(modeSelector, closeBtn);
   toolbar.insertBefore(recenterBtn, closeBtn);
   
-  // Event handlers
+  // Fixed event handlers
   modeSelector.addEventListener('change', (e) => {
     currentMode = e.target.value;
     rebuildTheaterWithMode(currentMode);
@@ -198,17 +214,28 @@ function enhanceXRToolbar() {
   });
   
   recenterBtn.addEventListener('click', () => {
-    if (mwControls) {
-      // Reset mobile controls
-      camera.rotation.set(0, 0, 0);
-      camera.position.set(0, 1.6, 0);
-      toast('View recentered');
-    } else if (controls) {
-      // Reset orbit controls
-      controls.reset();
-      toast('View recentered');
-    }
+    recenterToTheater();
+    toast('View recentered');
   });
+}
+
+// Fixed recenter function
+function recenterToTheater() {
+  const config = COMFORT_MODES[currentMode];
+  
+  if (mwControls) {
+    // Mobile: Reset orientation and position
+    camera.position.set(...config.cameraPosition);
+    camera.rotation.set(0, 0, 0);
+    camera.lookAt(...config.screenPosition);
+  } else if (controls) {
+    // Desktop: Reset orbit controls properly
+    camera.position.set(...config.cameraPosition);
+    controls.target.set(...config.screenPosition);
+    controls.update();
+  }
+  
+  logPositions('After Recenter');
 }
 
 document.getElementById('xrClose').onclick = () => {
@@ -225,7 +252,7 @@ document.getElementById('xrClose').onclick = () => {
   xrWrap.style.display = 'none';
 };
 
-// Enhanced Mobile Orientation Controls with Yaw-Only Option
+// Enhanced Mobile Orientation Controls
 class MobileOrientationControls {
   constructor(camera, yawOnly = false) {
     this.camera = camera;
@@ -238,7 +265,6 @@ class MobileOrientationControls {
     this.betaOffset = 0;
     this.gammaOffset = 0;
     
-    // Smoothing
     this.lastAlpha = 0;
     this.lastBeta = 0;
     this.lastGamma = 0;
@@ -248,14 +274,31 @@ class MobileOrientationControls {
     this.onScreenOrientationChangeEvent = this.onScreenOrientationChangeEvent.bind(this);
   }
 
-  connect() {
+  async connect() {
+    // Request permission for iOS 13+
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        if (permission !== 'granted') {
+          console.warn('Device orientation permission denied');
+          return false;
+        }
+      } catch (error) {
+        console.error('Error requesting device orientation permission:', error);
+        return false;
+      }
+    }
+    
     this.onScreenOrientationChangeEvent();
     
     if (window.DeviceOrientationEvent) {
       window.addEventListener('orientationchange', this.onScreenOrientationChangeEvent, false);
       window.addEventListener('deviceorientation', this.onDeviceOrientationChangeEvent, false);
       this.enabled = true;
+      console.log('Mobile orientation controls connected');
+      return true;
     }
+    return false;
   }
 
   disconnect() {
@@ -282,7 +325,6 @@ class MobileOrientationControls {
     const device = this.deviceOrientation;
     if (device && device.alpha !== null && device.beta !== null && device.gamma !== null) {
       
-      // Smooth the values to reduce jitter
       this.lastAlpha = this.lastAlpha + (device.alpha - this.lastAlpha) * this.smoothing;
       this.lastBeta = this.lastBeta + (device.beta - this.lastBeta) * this.smoothing;
       this.lastGamma = this.lastGamma + (device.gamma - this.lastGamma) * this.smoothing;
@@ -291,10 +333,9 @@ class MobileOrientationControls {
       let beta = THREE.MathUtils.degToRad(this.lastBeta) + this.betaOffset;
       let gamma = THREE.MathUtils.degToRad(this.lastGamma) + this.gammaOffset;
 
-      // Yaw-only mode for comfort
       if (this.yawOnly) {
-        beta = 0; // No pitch
-        gamma = 0; // No roll
+        beta = 0;
+        gamma = 0;
       }
 
       const orient = this.screenOrientation ? THREE.MathUtils.degToRad(this.screenOrientation) : 0;
@@ -312,17 +353,16 @@ class MobileOrientationControls {
   }
 }
 
-// Create stars function (moved outside buildScene)
+// Fixed stars creation
 function createStars() {
   const starsGeometry = new THREE.BufferGeometry();
-  const starsCount = 1000;
+  const starsCount = 800; // Reduced for mobile performance
   const positions = new Float32Array(starsCount * 3);
 
   for (let i = 0; i < starsCount; i++) {
     const i3 = i * 3;
     
-    // Create random positions on sphere surface
-    const radius = 15 + Math.random() * 8;
+    const radius = 18 + Math.random() * 6;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     
@@ -333,13 +373,11 @@ function createStars() {
 
   starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-  // Fixed material - use small spheres instead of points
   const starsMaterial = new THREE.PointsMaterial({
-    color: 0xaaaaff,
-    size: 0.1,
+    color: 0x9bb5ff,
+    size: 0.8,
     transparent: true,
-    opacity: 0.8,
-    vertexColors: false,
+    opacity: 0.6,
     sizeAttenuation: true
   });
 
@@ -350,6 +388,7 @@ function createStars() {
   return stars;
 }
 
+// Fixed screen building function with proper positioning
 function buildTheaterScreen(mode = 'phone') {
   const config = COMFORT_MODES[mode];
   
@@ -367,45 +406,45 @@ function buildTheaterScreen(mode = 'phone') {
   let materialSide;
   
   if (config.screenCurve === 0) {
-    // Flat screen for maximum comfort
-    screenGeo = new THREE.PlaneGeometry(4.8, 2.7, 32, 18);
+    // Flat screen
+    screenGeo = new THREE.PlaneGeometry(3.2, 1.8, 32, 18); // 16:9 ratio
     materialSide = THREE.FrontSide;
     console.log('Created Flat Screen Geometry');
   } else {
-    // Gently curved screen
-    const radius = config.screenDistance;
+    // Curved screen - positioned differently
+    const radius = 2.5; // Fixed radius for consistent curvature
     const arc = THREE.MathUtils.degToRad(config.screenCurve);
-    const segs = Math.max(32, Math.floor(config.screenCurve * 2));
+    const segs = Math.max(32, Math.floor(config.screenCurve * 1.5));
     
     screenGeo = new THREE.CylinderGeometry(
-      radius, radius, 2.7, segs, 1, true,
+      radius, radius, 1.8, segs, 1, true,
       Math.PI / 2 - arc / 2, arc
     );
     
     materialSide = THREE.BackSide;
     
-    // Fix UV mapping for curved screen
+    // Fix UV mapping for proper video orientation
     const uvAttribute = screenGeo.attributes.uv;
     const uvArray = uvAttribute.array;
     for (let i = 0; i < uvArray.length; i += 2) {
-      uvArray[i + 1] = 1.0 - uvArray[i + 1];
+      uvArray[i + 1] = 1.0 - uvArray[i + 1]; // Flip V
     }
     uvAttribute.needsUpdate = true;
     console.log('Created curved screen geometry with', config.screenCurve, 'degrees curve');
   }
   
-  // Create screen with visible placeholder material
+  // Create screen with placeholder material
   const placeholderMaterial = new THREE.MeshBasicMaterial({
-    color: 0x333333,
+    color: 0x444444,
     side: materialSide,
     transparent: true,
-    opacity: 0.8
+    opacity: 0.7
   });
   
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
   
-  // Position screen in front of camera
-  screen.position.set(0, 1.6, -config.screenDistance);
+  // CRITICAL FIX: Position screen at origin, camera behind it
+  screen.position.set(...config.screenPosition);
   scene.add(screen);
   
   // Update camera FOV
@@ -413,89 +452,108 @@ function buildTheaterScreen(mode = 'phone') {
   camera.updateProjectionMatrix();
   
   console.log(`Built ${config.name} theater:`, {
+    screenPos: config.screenPosition,
+    cameraPos: config.cameraPosition,
     distance: config.screenDistance,
     curve: config.screenCurve,
     fov: config.fov,
-    position: screen.position,
-    side: materialSide
+    side: materialSide === THREE.FrontSide ? 'FrontSide' : 'BackSide'
   });
   
   return screen;
 }
 
-function buildScene() {
-  console.log("Building scene...");
+// Mobile-optimized renderer
+function createMobileRenderer() {
+  const options = {
+    antialias: !isMobile(), // Disable AA on mobile for performance
+    alpha: false,
+    stencil: false,
+    depth: true,
+    logarithmicDepthBuffer: false,
+    powerPreference: "high-performance",
+    failIfMajorPerformanceCaveat: false,
+    preserveDrawingBuffer: false
+  };
 
-  // Scene + camera
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
-  camera.position.set(0, 1.6, 0);
-
-  // Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer(options);
+  
+  // Mobile-specific optimizations
+  const pixelRatio = Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2);
+  renderer.setPixelRatio(pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
+  
+  // Additional mobile optimizations
+  if (isMobile()) {
+    renderer.shadowMap.enabled = false;
+    renderer.physicallyCorrectLights = false;
+  }
+  
+  console.log('Created', isMobile() ? 'mobile-optimized' : 'desktop', 'renderer with pixel ratio:', pixelRatio);
+  return renderer;
+}
+
+// Fixed scene building
+function buildScene() {
+  console.log("🏗️ Building scene...");
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  
+  // Position camera behind screen initially
+  const config = COMFORT_MODES[currentMode];
+  camera.position.set(...config.cameraPosition);
+
+  // Create mobile-optimized renderer
+  renderer = createMobileRenderer();
   xrWrap.appendChild(renderer.domElement);
 
-  // Dark space environment
-  const roomGeo = new THREE.SphereGeometry(25, 64, 32);
+  // Environment
+  const roomGeo = new THREE.SphereGeometry(20, 32, 16);
   roomGeo.scale(-1, 1, 1);
   const roomMat = new THREE.MeshBasicMaterial({ color: 0x0a1020 });
   const room = new THREE.Mesh(roomGeo, roomMat);
   scene.add(room);
   console.log('Added room sphere');
 
-  // Add working stars
+  // Add stars
   createStars();
 
-  // Build screen based on detected mode
-  currentMode = detectBestMode();
+  // Build screen
   buildTheaterScreen(currentMode);
 
-  // Enhanced floor glow
+  // Floor effects
   const glow = new THREE.Mesh(
-    new THREE.RingGeometry(2.2, 2.8, 64),
+    new THREE.RingGeometry(1.8, 2.2, 32),
     new THREE.MeshBasicMaterial({
       color: 0x1e5bff,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.15
+      opacity: 0.12
     })
   );
   glow.rotation.x = -Math.PI / 2;
   glow.position.y = 0.01;
   scene.add(glow);
-  console.log('Added floor glow');
 
-  // Add subtle ambient lighting effect
-  const ambientRing = new THREE.Mesh(
-    new THREE.RingGeometry(3.5, 4, 32),
-    new THREE.MeshBasicMaterial({
-      color: 0x4488ff,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.05
-    })
-  );
-  ambientRing.rotation.x = -Math.PI / 2;
-  ambientRing.position.y = 0.02;
-  scene.add(ambientRing);
-
-  // Controls setup
-  const config = COMFORT_MODES[currentMode];
+  // CRITICAL: Setup controls to look at screen
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 1.6, -config.screenDistance);
+  controls.target.set(...config.screenPosition); // Look at screen
   controls.enableDamping = true;
-  controls.minDistance = 1.5;
-  controls.maxDistance = config.screenDistance + 3;
-
-  // Limit vertical rotation for comfort
-  controls.maxPolarAngle = Math.PI * 0.75;
-  controls.minPolarAngle = Math.PI * 0.25;
-
+  controls.dampingFactor = 0.05;
+  controls.minDistance = 0.5;
+  controls.maxDistance = 8;
+  controls.maxPolarAngle = Math.PI * 0.8;
+  controls.minPolarAngle = Math.PI * 0.2;
+  controls.enableZoom = true;
+  controls.enableRotate = true;
+  controls.enablePan = false;
+  
+  // Update controls after setup
   controls.update();
-  console.log('Setup orbit controls targeting screen at distance:', config.screenDistance);
+  
+  logPositions('After Scene Build');
 
   // Enhanced toolbar
   enhanceXRToolbar();
@@ -507,42 +565,71 @@ function buildScene() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Default render loop
+  // Render loop
   renderer.setAnimationLoop(() => {
     if (controls) controls.update();
     renderer.render(scene, camera);
   });
 
-  console.log('Scene built successfully');
+  console.log('✅ Scene built successfully');
 }
 
+// Fixed rebuild function
 function rebuildTheaterWithMode(mode) {
+  console.log(`🔄 Rebuilding theater with ${mode} mode`);
+  
+  const oldConfig = COMFORT_MODES[currentMode];
+  const newConfig = COMFORT_MODES[mode];
+  
+  // Rebuild screen
   buildTheaterScreen(mode);
   
-  // Update controls
-  const config = COMFORT_MODES[mode];
+  // Update camera and controls positions
   if (controls) {
-    controls.target.set(0, 1.6, -config.screenDistance);
-    controls.maxDistance = config.screenDistance + 2;
+    camera.position.set(...newConfig.cameraPosition);
+    controls.target.set(...newConfig.screenPosition);
+    controls.maxDistance = newConfig.screenDistance + 3;
     controls.update();
   }
   
   // Reapply video texture if exists
   if (videoTex && screen) {
+    const side = newConfig.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
     const videoMaterial = new THREE.MeshBasicMaterial({ 
       map: videoTex, 
       toneMapped: false, 
-      side: config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide 
+      side: side
     });
+    screen.material.dispose();
     screen.material = videoMaterial;
   }
   
   // Update UI
-  document.getElementById('currentMode').textContent = config.name;
+  document.getElementById('currentMode').textContent = newConfig.name;
+  
+  logPositions(`After Mode Switch to ${mode}`);
+}
+
+// Fixed video texture creation
+function createVideoTexture(videoElement) {
+  const texture = new THREE.VideoTexture(videoElement);
+  
+  // Critical texture settings for consistent orientation
+  texture.flipY = false;  // Prevent upside-down video
+  texture.format = isMobile() ? THREE.RGBFormat : THREE.RGBAFormat;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.generateMipmaps = false;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  
+  console.log('Created video texture with mobile optimization:', isMobile());
+  return texture;
 }
 
 async function startXR() {
-  console.log('Starting XR mode...');
+  console.log('🚀 Starting XR mode...');
   
   if (!renderer) {
     console.log('No renderer found, building scene...');
@@ -566,6 +653,7 @@ async function startXR() {
     document.body.appendChild(btn);
   }
 
+  // Ensure render loop is active
   renderer.setAnimationLoop(() => {
     if (controls) controls.update();
     renderer.render(scene, camera);
@@ -573,11 +661,14 @@ async function startXR() {
   
   const modeName = COMFORT_MODES[currentMode].name;
   toast(`${modeName} theater mode active`);
-  console.log(`XR started in ${modeName} mode`);
+  console.log(`✅ XR started in ${modeName} mode`);
+  
+  logPositions('After XR Start');
 }
 
+// Fixed video attachment
 async function attachVideoToScreen() {
-  console.log('Attaching video to screen...');
+  console.log('🎬 Attaching video to screen...');
   
   if (!screen) {
     console.error("No screen found to attach video to!");
@@ -590,23 +681,34 @@ async function attachVideoToScreen() {
     videoEl.crossOrigin = 'anonymous';
     videoEl.playsInline = true;
     videoEl.setAttribute('webkit-playsinline', '');
-    videoEl.preload = 'auto';
+    videoEl.setAttribute('playsinline', '');
+    videoEl.preload = 'metadata';
     videoEl.loop = true;
     videoEl.muted = true;
     videoEl.volume = 0.8;
     
+    // Mobile-specific video settings
+    if (isMobile()) {
+      videoEl.setAttribute('webkit-playsinline', 'true');
+      videoEl.setAttribute('x-webkit-airplay', 'deny');
+    }
+    
     videoEl.onerror = (e) => {
-      console.error('Video error:', e);
+      console.error('Video error:', e, videoEl.error);
       toast('Video failed to load');
     };
     
     videoEl.onloadeddata = () => {
-      console.log('Video loaded successfully', {
+      console.log('✅ Video loaded successfully', {
         width: videoEl.videoWidth,
         height: videoEl.videoHeight,
-        duration: videoEl.duration
+        duration: videoEl.duration?.toFixed(1) + 's'
       });
       toast('Video ready - click to unmute');
+    };
+    
+    videoEl.oncanplay = () => {
+      console.log('Video can play, ready for texture');
     };
     
     videoEl.src = mp4;
@@ -616,14 +718,14 @@ async function attachVideoToScreen() {
 
   try {
     await videoEl.play();
-    console.log('Video playing automatically');
+    console.log('✅ Video playing automatically');
   } catch (error) {
-    console.warn('Video autoplay failed:', error);
+    console.warn('Video autoplay failed:', error.message);
     toast('Tap screen to start video with sound');
     
     const startVideo = () => {
       videoEl.play().then(() => {
-        console.log('Video started after user interaction');
+        console.log('✅ Video started after user interaction');
         videoEl.muted = false;
         toast('Video playing with sound');
       }).catch(e => console.error('Video play failed:', e));
@@ -632,16 +734,10 @@ async function attachVideoToScreen() {
     renderer.domElement.addEventListener('click', startVideo);
   }
 
-  // Create video texture
-  videoTex = new THREE.VideoTexture(videoEl);
-  videoTex.colorSpace = THREE.SRGBColorSpace;
-  videoTex.minFilter = THREE.LinearFilter;
-  videoTex.magFilter = THREE.LinearFilter;
-  videoTex.format = THREE.RGBAFormat;
-  videoTex.flipY = false;
-  videoTex.generateMipmaps = false;
+  // Create optimized video texture
+  videoTex = createVideoTexture(videoEl);
   
-  // Create material based on current screen type
+  // Apply to screen with correct material side
   const config = COMFORT_MODES[currentMode];
   const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
 
@@ -651,9 +747,10 @@ async function attachVideoToScreen() {
     side: side
   });
   
-  screen.material.dispose();
+  if (screen.material) screen.material.dispose();
   screen.material = videoMaterial;
-  console.log('Video texture applied to screen with side:', side === THREE.FrontSide ? 'FrontSide' : 'BackSide');
+  
+  console.log('✅ Video texture applied with side:', side === THREE.FrontSide ? 'FrontSide' : 'BackSide');
 }
 
 async function requestMotionPermission() {
@@ -661,8 +758,10 @@ async function requestMotionPermission() {
       typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
       const response = await DeviceOrientationEvent.requestPermission();
+      console.log('Device orientation permission:', response);
       return response === 'granted';
-    } catch {
+    } catch (error) {
+      console.error('Motion permission error:', error);
       return false;
     }
   }
@@ -670,32 +769,44 @@ async function requestMotionPermission() {
 }
 
 async function startMagicWindow() {
+  console.log('📱 Starting Magic Window mode...');
+  
   if (!renderer) buildScene();
   xrWrap.style.display = 'block';
   await attachVideoToScreen();
 
-  // Dispose orbit controls
+  // Dispose orbit controls for mobile
   if (controls) {
     controls.dispose();
     controls = null;
   }
 
-  // Mobile orientation controls with yaw-only option for comfort
+  // Setup mobile orientation controls
   const config = COMFORT_MODES[currentMode];
   mwControls = new MobileOrientationControls(camera, config.yawOnly);
-  mwControls.connect();
+  const connected = await mwControls.connect();
+  
+  if (!connected) {
+    console.warn('Failed to connect mobile orientation controls');
+    toast('Touch controls available - swipe to look around');
+  }
 
+  // Render loop for mobile
   renderer.setAnimationLoop(() => {
     if (mwControls) mwControls.update();
     renderer.render(scene, camera);
   });
 
   const modeText = config.yawOnly ? ' (yaw only for comfort)' : '';
-  toast(`${config.name} mode: move your phone to look around${modeText}`);
+  toast(`${config.name} mode: ${connected ? 'move your phone' : 'touch and drag'} to look around${modeText}`);
+  
+  logPositions('After Magic Window Start');
 }
 
 // Main initialization
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('🎯 App initializing...');
+  
   // Setup enhanced media players
   const { controlPanel } = setupMediaPlayers();
 
@@ -705,8 +816,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Auto-detect best mode
     currentMode = detectBestMode();
+    console.log('Detected best mode:', currentMode);
     
-    // Show control panel instead of immediate action
+    // Show control panel
     controlPanel.style.display = 'block';
     document.getElementById('currentMode').textContent = COMFORT_MODES[currentMode].name;
     
@@ -722,44 +834,56 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Enter Theater button handler
+  // Fixed Enter Theater button handler
   document.addEventListener('click', async (e) => {
     if (e.target.id === 'enterTheater') {
       e.preventDefault();
       document.getElementById('theaterControls').style.display = 'none';
+      
+      console.log('🎭 Entering theater mode...');
+
+      // Check platform capabilities
+      const hasXR = !inTelegram() && await xrSupported();
+      const isMobileDevice = isMobile();
+      
+      console.log('Platform check:', { hasXR, isMobileDevice, inTelegram: inTelegram() });
 
       // Try VR/3D experience based on device
-      if (!inTelegram() && await xrSupported()) {
+      if (hasXR) {
         try {
+          console.log('Attempting XR mode...');
           await startXR();
           return;
         } catch (error) {
-          console.error('VR failed:', error);
+          console.error('XR failed:', error);
         }
       }
 
       // Mobile orientation mode
-      if (isMobile()) {
-        const ok = await requestMotionPermission();
-        if (ok) {
-          try {
-            await startMagicWindow();
-            return;
-          } catch (error) {
-            console.error('Magic Window failed:', error);
-          }
+      if (isMobileDevice) {
+        try {
+          console.log('Attempting mobile magic window...');
+          const permissionGranted = await requestMotionPermission();
+          console.log('Motion permission granted:', permissionGranted);
+          
+          await startMagicWindow();
+          return;
+        } catch (error) {
+          console.error('Magic Window failed:', error);
         }
       } else {
-        // Desktop VR mode
+        // Desktop fallback to XR mode
         try {
+          console.log('Attempting desktop XR mode...');
           await startXR();
           return;
         } catch (error) {
-          console.error('Desktop VR failed:', error);
+          console.error('Desktop XR failed:', error);
         }
       }
 
-      // Fallback
+      // Ultimate fallback
+      console.warn('All theater modes failed, suggesting fallback');
       toast('Theater mode not available - try 2D player');
     }
   });
@@ -769,5 +893,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const qs = q.get('src');
   if (qs) {
     hero.dataset.mp4 = qs;
+    console.log('Using custom video source:', qs);
   }
+  
+  console.log('✅ App initialized successfully');
 });
