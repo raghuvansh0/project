@@ -30,13 +30,13 @@ const COMFORT_MODES = {
     screenPosition: [0, 1.6, 0]       // Screen curves around camera
   },
   desktop: {
-    screenDistance: 4.5,    // Optimized for laptop screen size
-    screenCurve: 80,       // Full wrap-around for immersion
-    fov: 85,
+    screenDistance: 5.0,    // Optimized for laptop screen size
+    screenCurve: 110,       // Full wrap-around for immersion
+    fov: 75,
     yawOnly: false,
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
-    screenPosition: [0, 1.6, -4.5]       // Screen wraps around camera
+    screenPosition: [0, 1.6, 0]       // sphere segment is centered at camera
   }
 };
 
