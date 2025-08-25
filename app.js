@@ -88,9 +88,9 @@ function isTablet() {
 }
 
 function detectBestMode() {
-  if (isMobile() && !isTablet()) return 'phone';
-  if (isTablet()) return 'tablet';
-  return 'desktop';
+  if (window.innerWidth >= 768) return 'tablet';
+  if (window.innerWidth >= 1024) return 'desktop';
+  return 'phone';
 }
 
 // Enhanced Media Player Setup
@@ -635,13 +635,14 @@ function createVideoTexture(videoElement) {
   
   // Critical texture settings for consistent orientation
   texture.flipY = false;  // Prevent upside-down video
-  texture.format = isMobile() ? THREE.RGBFormat : THREE.RGBAFormat;
+  texture.format = THREE.RGBFormat;   //Force RGB for all devices
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.generateMipmaps = false;
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate=true;
   
   console.log('Created video texture with mobile optimization:', isMobile());
   return texture;
