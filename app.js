@@ -36,7 +36,7 @@ const COMFORT_MODES = {
     yawOnly: false,
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
-    screenPosition: [0, 1.6, 0]       // Screen wraps around camera
+    screenPosition: [0, 1.6, -4.5]       // Screen wraps around camera
   }
 };
 
@@ -454,7 +454,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    screen.rotation.y = Math.PI; //rotate 180 deg to face camera
+    //screen.rotation.y = Math.PI; //rotate 180 deg to face camera
     console.log("Rotated curved screen 180° to face camera");
   }
   scene.add(screen);
@@ -642,7 +642,7 @@ function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
   
   // CRITICAL FIX: Proper texture settings to avoid WebGL errors
-  texture.flipY = true;
+  texture.flipY = false;
   //texture.format = THREE.RGBAFormat;     // FIXED: Use RGB format ; Let Three.js auto detect
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
