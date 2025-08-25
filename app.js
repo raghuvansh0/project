@@ -451,8 +451,8 @@ function buildTheaterScreen(mode = 'phone') {
   }
   
   // Create screen with placeholder material
-  const placeholderMaterial = new THREE.MeshBasicMaterial({
-    color: 0x333333,
+    const placeholderMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
     side: materialSide,
     transparent: true,
     opacity: 0.8
@@ -760,11 +760,13 @@ async function attachVideoToScreen() {
   const config = COMFORT_MODES[currentMode];
   const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
 
-  const videoMaterial = new THREE.MeshBasicMaterial({ 
+    const videoMaterial = new THREE.MeshBasicMaterial({ 
     map: videoTex, 
     toneMapped: false,
     side: side
   });
+  videoMaterial.transparent=false;
+  videoMaterial.opacity=1.0;
   
   if (screen.material) screen.material.dispose();
   screen.material = videoMaterial;
