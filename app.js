@@ -233,7 +233,12 @@ function recenterToTheater() {
   } else if (controls) {
     // Desktop: Reset orbit controls properly
     camera.position.set(...config.cameraPosition);
-    controls.target.set(...config.screenPosition);
+    if (config.screenCurve === 0) {
+     controls.target.set(...config.screenPosition); // flat: aim at the plane
+    }   
+    else {
+      controls.target.set(0, 1.6, -1);               // curved: aim forward
+    }
     controls.update();
   }
   
@@ -436,13 +441,7 @@ function buildTheaterScreen(mode = 'phone') {
   
     //✅ we are *inside* the segment → render its inside
     materialSide = THREE.BackSide;
-    // ✅ flip V for the SPHERE so text is upright in Immersive
-    const uvAttr = screenGeo.attributes.uv;
-    for (let i = 0; i < uvAttr.array.length; i += 2) {
-      uvAttr.array[i + 1] = 1 - uvAttr.array[i + 1];
-  }
-  uvAttr.needsUpdate = true;
-    
+      
     console.log('Created immersive sphere segment with', config.screenCurve, 'degrees horizontal curve');
    }
   
@@ -567,7 +566,7 @@ function buildScene() {
   } else {
     // Curved screen - free look controls
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(...config.screenPosition);
+    controls.target.set(0,1.6,-1);
     controls.enableDamping = true;
     controls.dampingFactor = 0.02;
     controls.minDistance = 0.1;
@@ -605,15 +604,16 @@ function rebuildTheaterWithMode(mode) {
   // Update camera and controls positions
   if (controls) {
     camera.position.set(...newConfig.cameraPosition);
-    controls.target.set(...newConfig.screenPosition);
     
     if (newConfig.screenCurve === 0) {
       // Flat screen controls
+      controls.target.set(...newConfig.screenPosition);
       controls.minDistance = 1;
       controls.maxDistance = 6;
       controls.enableZoom = true;
     } else {
       // Curved screen controls
+      controls.target.set(0, 1.6, -1);  // ✅ critical for Immersive
       controls.minDistance = 0.1;
       controls.maxDistance = 1;
       controls.enableZoom = false;
@@ -633,7 +633,7 @@ function rebuildTheaterWithMode(mode) {
     screen.material.dispose();
     screen.material = videoMaterial;
     // ✅ ensure the recycled texture pushes a fresh frame
-    videoTex.needsUpdate = true;
+    if (videoTex) videoTex.needsUpdate = true;
   }
   
   // Update UI
