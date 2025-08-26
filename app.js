@@ -173,6 +173,8 @@ function setupMediaPlayers() {
 // Global variables
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
 const xrWrap = document.getElementById('xrWrap');
+let audioCtx, mediaSource, masterGain, stereoPanner, lowShelf,highShelf, compressor;//audio global variables
+let audioReady=false;
 
 // Fixed XR toolbar with proper recenter
 function enhanceXRToolbar() {
@@ -634,6 +636,11 @@ function rebuildTheaterWithMode(mode) {
     screen.material = videoMaterial;
     // ✅ ensure the recycled texture pushes a fresh frame
     if (videoTex) videoTex.needsUpdate = true;
+    //Ensure audio context active & set pan mode correctly after switch
+    if (videoEl){
+      buildAudioGraph(videoEl);
+      enableAudioforMode(COMFORT_MODES[mode]);
+    }
   }
   
   // Update UI
@@ -658,6 +665,87 @@ function createVideoTexture(videoElement) {
   
   console.log('✅ Created video texture with fixed format settings');
   return texture;
+}
+
+// === Audio helpers (ADD) ===
+function buildAudioGraph(videoEl){
+  if (audioCtx) return; //already built
+
+audioCtx =  new (window.AudioContext || window.webkitAudioContext());
+
+// Create nodes
+mediaSource = audioCtx.createMediaElementSource(videoEl);
+stereoPanner = audioCtx.createStereoPanner();
+lowShelf = audioCtx.createBiquadFilter();
+highShelf = audioCtx.createBiquadFilter();
+compressor = audioCtx.createDynamicsCompressor();
+masterGain = audioCtx.createGain();
+// Tone shaping
+lowShelf.type = 'lowshelf';
+lowShelf.frequency.value = 120;
+lowShelf.gain.value=3;      //+3db
+
+highShelf.type='highshelf';
+highShelf.frequency.value=8000;
+highShelf.gain.value=1;     //+1db
+
+//Gentle mastering
+compressor.threshold.value=-18;
+compressor.knee.value=24;
+compressor.ratio.value=2.5;
+compressor.attack.value=0.003;
+compressor.release.value=0.25;
+
+masterGain.gain.value=1.0;  //overall output
+//Wire video -> tone -> comp->panner->gain->out
+mediaSource.connect(lowShelf);
+lowShelf.connect(highShelf);
+highShelf.connect(compressor);
+compressor.connect(stereoPanner);
+stereoPanner.connect(masterGain);
+masterGain.connect(audioCtx.destination);
+
+console.log("✅ Audio graph built");
+}
+
+async function enableAudioforMode(modeConfig){
+  // Resume AudioContext (required on mobile/desktop until user gesture)
+  if(!audioCtx) return;
+  if(audioCtx.state === "suspended"){
+    try{await audioCtx.resume();} catch(e) {console.warn('Audio resume failed',e);}
+  }
+  //Unmute video once we have a gesture
+  if (videoEl) {
+    videoEl.muted = false;
+    videoEl.volume=1.0;
+  }
+  // Comfort: center pan; Immersive: dynamic pan (we update each frame)
+  if (stereoPanner) {
+    stereoPanner.pan.value = (modeConfig.screenCurve===0) ? 0 : 0; //start centered
+  }
+  audioReady=true;
+  console.log('🔊 Audio enabled for', modeConfig.name);
+  // Small overlay to get user gesture for sound
+
+  function ensureUnmuteOverlay(){
+    if(document.getElementById('unmuteOverlay')) return;
+    const btn = document.createElement('button');
+    btn.id = 'unmuteOverlay'
+    btn.textContent = 'Tap for Sound';
+    btn.style.cssText=`
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    z-index: 1004; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid rgba(120,160,255,.35); color: #fff;
+    background: rgba(15,20,40,.85); font-weight: 700; cursor: pointer;
+    `;
+    btn.addEventListener('click',async()=>{
+      buildAudioGraph(videoEl);
+      await enableAudioforMode(COMFORT_MODES[currentMode]);
+      btn.remove()
+      toast('Sound on');
+    });
+    document.body.appendChild(btn);
+  }
 }
 
 async function startXR() {
@@ -690,11 +778,28 @@ async function startXR() {
     if (controls) controls.update();
     if (mwControls) mwControls.update();
   
+    // === Audio panner update (ADD inside the render loop) ===
+    if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
+      const cfg = COMFORT_MODES[currentMode];
+    if (cfg.screenCurve === 0) {
+      // Comfort — fixed stereo center
+      stereoPanner.pan.value = 0;
+    } else {
+      // Immersive — subtle pan based on camera yaw
+      // Estimate yaw from camera forward vector
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);             // forward in world space
+      const yaw = Math.atan2(dir.x, -dir.z);     // -Z is forward in your scene
+      // Map ±90° to ±0.7 pan (keeps it comfortable)
+      const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.7));
+      stereoPanner.pan.value = pan;
+    }
+  }
+      
     // Force video texture update
     if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
     videoTex.needsUpdate = true;
-  }
-  
+  }  
   renderer.render(scene, camera);
 });
   
@@ -723,7 +828,7 @@ async function attachVideoToScreen() {
     videoEl.setAttribute('playsinline', '');
     videoEl.preload = 'metadata';
     videoEl.loop = true;
-    videoEl.muted = true;
+    videoEl.muted = true;  // start muted to satisfy autoplay; we unmute on gesture
     videoEl.volume = 0.8;
     
     videoEl.onerror = (e) => {
@@ -760,9 +865,15 @@ async function attachVideoToScreen() {
         
         if (screen.material) screen.material.dispose();
         screen.material = videoMaterial;
-        
+        // prepare audio graph (actual sound starts on user gesture)
+        if (!audioCtx){
+          buildAudioGraph(videoEl);
+        }
         console.log('✅ Video texture applied to screen');
       }
+      // We still need a user gesture to start sound on most browsers:
+      // show “Tap for sound” overlay (make sure ensureUnmuteOverlay() is top-level)
+        ensureUnmuteOverlay();
     };
     
     // Set video source
@@ -780,18 +891,24 @@ async function attachVideoToScreen() {
 
   try {
     await videoEl.play();
-    console.log('✅ Video playing automatically');
+    console.log('✅ Video playing automatically (muted)');
   } catch (error) {
     console.warn('Video autoplay failed:', error.message);
     toast('Click screen to start video with sound');
-    
-        const startVideo = () => {
-        videoEl.play().then(() => {
-        console.log('✅ Video started after user interaction');
-        videoEl.muted = false;
-        toast('Video playing with sound');
-      }).catch(e => console.error('Video play failed:', e));
-      renderer.domElement.removeEventListener('click', startVideo);
+        // One-click start with audio
+        const startVideo = async () => {
+        renderer.domElement.removeEventListener('click', startVideo);
+        try {
+         await videoEl.play(); // user gesture allows sound
+         console.log('✅ Video started after user interaction');
+         buildAudioGraph(videoEl);
+         await enableAudioforMode(COMFORT_MODES[currentMode]);
+         const btn = document.getElementById('unmuteOverlay');
+         if (btn) btn.remove();
+          toast('Video playing with sound');
+        } catch (e) {
+        console.error('Video play failed:', e);
+      }
     };
     renderer.domElement.addEventListener('click', startVideo);
   }
@@ -889,7 +1006,14 @@ document.addEventListener('DOMContentLoaded', function() {
       // For laptop testing, always go to XR mode (desktop behavior)
       try {
         console.log('Starting XR mode for laptop...');
-        await startXR();
+        // we have a user gesture here; prep audio early
+        if (videoEl) {
+          buildAudioGraph(videoEl);
+          await enableAudioforMode(COMFORT_MODES[currentMode]);
+        } else {
+          // if videoEl gets created inside attachVideoToScreen, the oncanplay path will show the Unmute button anyway
+        }
+          await startXR();
         return;
       } catch (error) {
         console.error('XR failed:', error);
