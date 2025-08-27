@@ -470,7 +470,7 @@ function buildTheaterScreen(mode = 'phone') {
     // flat screen can be moved in front of camera
     screen.position.set(...config.screenPosition);
   } else {
-    screen.rotation.y = Math.PI;
+    screen.rotation.x = Math.PI;
     // curved screen must stay centered on origin so camera is inside it
     //screen.position.set(0, 0, 0);
   }
