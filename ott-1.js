@@ -12,7 +12,7 @@ const YT_ID = 'JVAZGhSdczM';
 // ASUS ZenBook Duo optimized comfort modes
 const COMFORT_MODES = {
   phone: {
-    screenDistance: 2.5,
+    screenDistance: 2.5,    
     screenCurve: 0,         // Flat screen
     fov: 70,                // Comfortable for laptop screen
     yawOnly: true,
@@ -20,24 +20,26 @@ const COMFORT_MODES = {
     cameraPosition: [0, 1.6, 0],      // Camera at center
     screenPosition: [0, 1.6, -2.5]     // Screen in front
   },
-  tablet: {
-    screenDistance: 3.5,    // Curved screen radius
-    screenCurve: 70,        // Good curve for laptop viewing
-    fov: 85,
-    yawOnly: false,
-    name: 'Cinema',
-    cameraPosition: [0, 1.6, 0],      // Camera at center of curve
-    screenPosition: [0, 1.6, 0]       // Screen curves around camera
-  },
-  desktop: {
-    screenDistance: 5.0,    // Optimized for laptop screen size
-    screenCurve: 110,       // Full wrap-around for immersion
-    fov: 75,
+    desktop: {
+        screenDistance: 3.0,    // Adjusted for a narrower screen
+        screenCurve: 120,       // Slightly less curve for immersion
+    fovMin: 65,
+    fovMax:85,
+    fov:78,
     yawOnly: false,
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
     screenPosition: [0, 1.6, 0]       // sphere segment is centered at camera
-  }
+  },
+  tablet: {
+  screenDistance: 2.6,
+  screenCurve: 70,   // gentle wrap for tablets
+  fov: 74,
+  yawOnly: false,
+  name: 'Immersive',
+  cameraPosition: [0, 1.6, 0],
+  screenPosition: [0, 1.6, 0]
+  },
 };
 
 let currentMode = 'phone';
@@ -70,28 +72,35 @@ async function xrSupported() {
   }
 }
 
-function inTelegram() {
-  return /Telegram/i.test(navigator.userAgent) || (window.Telegram && window.Telegram.WebApp);
+
+function isSmallTouch() {
+  const sw = Math.min(window.screen.width, window.screen.height);
+  return navigator.maxTouchPoints >= 1 && sw <= 800;
 }
 
-function isMobile() {
-  // ASUS ZenBook Duo specific: treat as desktop even with touch
-  return false; // Force desktop behavior for laptop testing
+function isTabletSizedTouch() {
+  const sw = Math.min(window.screen.width, window.screen.height);
+  return navigator.maxTouchPoints >= 1 && sw > 800 && sw <= 1200;
 }
 
-function isTablet() {
-  return (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && window.innerWidth > 768) ||
-         /iPad/i.test(navigator.userAgent);
-}
+//function isDesktopOS() {
+//  return /(Win|Mac|Linux)/i.test(navigator.platform || '') || /X11|CrOS/i.test(navigator.userAgent);
+//}
 
 function detectBestMode() {
-  // Force desktop for Zenbook Duo testing
-  console.log('ZenBook Duo: Forcing desktop mode, window width:', window.innerWidth);
-  return 'desktop';  // Always return desktop for your testing
-  //if (window.innerWidth >= 1200) return 'desktop';  // Full immersive for laptop
-  //if (window.innerWidth >= 900) return 'tablet';    // Cinema mode for smaller windows
-  //return 'phone';  // Comfort fallback
+  
+  const override = new URLSearchParams(location.search).get('mode');
+  if (override && ['phone','tablet','desktop'].includes(override)) {
+    console.log('Using manual override mode:', override);
+    return override;
+  }
+  if (isSmallTouch()) return 'phone';
+  if (isTabletSizedTouch()) return 'desktop';  //force it to be desktop now so that it works
+
+  // Everything else (including touch laptops) = desktop
+  return 'desktop';
 }
+
 
 // Enhanced Media Player Setup
 function setupMediaPlayers() {
@@ -176,6 +185,7 @@ const xrWrap = document.getElementById('xrWrap');
 let audioCtx, mediaSource, masterGain, stereoPanner, lowShelf,highShelf, compressor;//audio global variables
 let delay,delayFeedback,reverb,reverbGain = false
 let audioReady=false;
+let prevPan=0;
 
 // Fixed XR toolbar with proper recenter
 function enhanceXRToolbar() {
@@ -190,8 +200,7 @@ function enhanceXRToolbar() {
   `;
   
   modeSelector.innerHTML = `
-    <option value="phone">Comfort Mode</option>
-    <option value="tablet">Cinema Mode</option>  
+    <option value="phone">Comfort Mode</option> 
     <option value="desktop">Immersive Mode</option>
   `;
   
@@ -240,7 +249,7 @@ function recenterToTheater() {
      controls.target.set(...config.screenPosition); // flat: aim at the plane
     }   
     else {
-      controls.target.set(0, 1.6, -1);               // curved: aim forward
+      controls.target.set(0, 1.6, -2);               // curved: aim forward
     }
     controls.update();
   }
@@ -390,7 +399,7 @@ function createStars() {
     opacity: 0.3,     // More transparent
     sizeAttenuation: true
   });
-
+  starsMaterial.depthWrite = false; // <-- add this
   const stars = new THREE.Points(starsGeometry, starsMaterial);
   scene.add(stars);
 
@@ -398,11 +407,10 @@ function createStars() {
   return stars;
 }
 
-// FIXED screen building function with proper immersive positioning
 function buildTheaterScreen(mode = 'phone') {
   const config = COMFORT_MODES[mode];
-  
-  // Remove old screen
+
+  // Remove old screen if it exists
   if (screen) {
     scene.remove(screen);
     if (screen.material && screen.material.map) {
@@ -411,63 +419,68 @@ function buildTheaterScreen(mode = 'phone') {
     if (screen.material) screen.material.dispose();
     if (screen.geometry) screen.geometry.dispose();
   }
-  
+
   let screenGeo;
   let materialSide;
-  
+
   if (config.screenCurve === 0) {
-    // Flat screen for comfort mode
-    screenGeo = new THREE.PlaneGeometry(6, 3.375, 32, 18); // 16:9 ratio, bigger
+    // ✅ Flat screen (Comfort)
+    screenGeo = new THREE.PlaneGeometry(6, 3.375, 32, 18); // 16:9 ratio
     materialSide = THREE.FrontSide;
-    // Fixed : Flip UV coordinates to fix upside-down video
+
+    // Flip UVs so video isn’t upside down
     const uvAttr = screenGeo.attributes.uv;
-    for (let i=0;i < uvAttr.array.length; i+=2){
-      uvAttr.array[i+1] = 1 - uvAttr.array[i+1]; //flip Y coordinate
+    for (let i = 0; i < uvAttr.array.length; i += 2) {
+      uvAttr.array[i + 1] = 1 - uvAttr.array[i + 1];
     }
-    uvAttr.needsUpdate=true;
-    console.log('Created Flat Screen Geometry with fixed UV coordinates');
-  }
-  else {
-    // use a sphere segment for IMMERSIVE mode
+    uvAttr.needsUpdate = true;
+
+    console.log('Created flat screen geometry with fixed UV coordinates');
+  } else {
+    // ✅ Curved screen (Immersive)
     const radius = config.screenDistance;
-    const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
-    const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
-    
+    const phiLength   = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
+    const thetaLength = THREE.MathUtils.degToRad(90);                 // vertical span
+
+    const phiStart = (3 * Math.PI) / 2 - phiLength / 2; // ✅ center the arc on −Z
     screenGeo = new THREE.SphereGeometry(
       radius,
       64, 64,
-      Math.PI/2 - phiLength/2, // phiStart: center forward
-      phiLength,               // phiLength
-      Math.PI/2 - thetaLength/2, // thetaStart: tilt vertical window
-      thetaLength              // thetaLength
+      phiStart,
+      phiLength,
+      Math.PI / 2 - thetaLength / 2,
+      thetaLength
     );
-  
-    //✅ we are *inside* the segment → render its inside
-    materialSide = THREE.BackSide;
-      
-    console.log('Created immersive sphere segment with', config.screenCurve, 'degrees horizontal curve');
-   }
-  
-  // Create screen with visible placeholder material
-    const placeholderMaterial = new THREE.MeshBasicMaterial({
-    color: 0x333333,  // Dark grey instead of red
+
+    materialSide = THREE.BackSide; // we’re inside the arc
+    console.log('Created immersive sphere segment with', config.screenCurve, 'deg curve');
+  }
+
+  // Placeholder material (until video texture replaces it)
+  const placeholderMaterial = new THREE.MeshBasicMaterial({
+    color: 0x333333,
     side: materialSide,
     transparent: false
   });
-  
+
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
-  screen.position.set(...config.screenPosition);
-  // FIXED : Rotate curved screens 180 deg to face camera
-  if (config.screenCurve!==0) {
-    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
-    console.log("Rotated curved screen 180° to face camera");
+
+  // ✅ Position depends on flat vs curved
+  if (config.screenCurve === 0) {
+    // flat screen can be moved in front of camera
+    screen.position.set(...config.screenPosition);
+  } else {
+    screen.rotation.y = Math.PI;
+    // curved screen must stay centered on origin so camera is inside it
+    //screen.position.set(0, 0, 0);
   }
+
   scene.add(screen);
 
-  // Update camera FOV for proper immersion
+  // Update camera FOV
   camera.fov = config.fov;
   camera.updateProjectionMatrix();
-  
+
   console.log(`Built ${config.name} theater:`, {
     distance: config.screenDistance,
     curve: config.screenCurve,
@@ -475,11 +488,10 @@ function buildTheaterScreen(mode = 'phone') {
     position: screen.position,
     side: materialSide
   });
-  
+
   return screen;
 }
 
-// ASUS ZenBook Duo optimized renderer
 function createMobileRenderer() {
   const options = {
     antialias: true,        // Enable for laptop quality
@@ -493,18 +505,16 @@ function createMobileRenderer() {
   };
 
   const renderer = new THREE.WebGLRenderer(options);
-  
-  // High quality for laptop screen
-  const pixelRatio = Math.min(window.devicePixelRatio, 2);
-  renderer.setPixelRatio(pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
-  
-  // Enable high-quality features for laptop
+
+  const maxDPR = (currentMode === 'phone' || currentMode === 'tablet') ? 1.5 : 2;
+
+  const pixelRatio = Math.min(window.devicePixelRatio, maxDPR);
+  renderer.setPixelRatio(pixelRatio);
   renderer.shadowMap.enabled = false; // Keep disabled for performance
   renderer.physicallyCorrectLights = false;
-  
-  console.log('Created ASUS ZenBook Duo optimized renderer with pixel ratio:', pixelRatio);
+
   return renderer;
 }
 
@@ -551,6 +561,11 @@ function buildScene() {
   glow.position.y = 0.01;
   scene.add(glow);
 
+  // Ambient vibe lighting (doesn't affect the video, but tints stars/UI)
+  const hemi = new THREE.HemisphereLight(0x4a6b8a, 0x050810, 0.25);
+  scene.add(hemi);
+
+
   // Setup controls based on mode
   if (config.screenCurve === 0) {
     // Flat screen - traditional controls
@@ -569,7 +584,7 @@ function buildScene() {
   } else {
     // Curved screen - free look controls
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0,1.6,-1);
+    controls.target.set(0, 1.6, -2); // Look slightly forward
     controls.enableDamping = true;
     controls.dampingFactor = 0.02;
     controls.minDistance = 0.1;
@@ -616,7 +631,7 @@ function rebuildTheaterWithMode(mode) {
       controls.enableZoom = true;
     } else {
       // Curved screen controls
-      controls.target.set(0, 1.6, -1);  // ✅ critical for Immersive
+      controls.target.set(0, 1.6, -2);  // ✅ critical for Immersive
       controls.minDistance = 0.1;
       controls.maxDistance = 1;
       controls.enableZoom = false;
@@ -655,8 +670,7 @@ function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
   
   // CRITICAL FIX: Proper texture settings to avoid WebGL errors
-  texture.flipY = false;
-  //texture.format = THREE.RGBAFormat;     // FIXED: Use RGB format ; Let Three.js auto detect
+  texture.flipY = true; //changed this now
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -699,7 +713,7 @@ function buildAudioGraph(videoEl){
   stereoWidener.delayTime.value = 0.003; // 3ms for widening
 
   const widenerGain = audioCtx.createGain();
-  widenerGain.gain.value = 0.2; // Will be adjusted per mode
+  widenerGain.gain.value = 0.15; // Will be adjusted per mode
 
   // Advanced compressor settings
   compressor = audioCtx.createDynamicsCompressor();
@@ -711,7 +725,7 @@ function buildAudioGraph(videoEl){
 
   // Immersive effects
   delay = audioCtx.createDelay(0.3);
-  delay.delayTime.value = 0.08; // Longer delay for space
+  delay.delayTime.value = 0.0028; // Longer delay for space was 0.08 too long->echoey
 
   delayFeedback = audioCtx.createGain();
   delayFeedback.gain.value = 0.0; // Will be set per mode
@@ -768,11 +782,18 @@ function buildAudioGraph(videoEl){
   stereoWidener.connect(widenerGain);
   widenerGain.connect(stereoPanner);
   
+  // Add delay mix control for bypassing delay completely
+  const delayMix = audioCtx.createGain();
+  delayMix.gain.value = 0.0; //Start with no delay
+  // Store reference for mode switching  
+  window.delayMix = delayMix;
+  
   // Delay/echo path
   compressor.connect(delay);
   delay.connect(delayFeedback);
   delayFeedback.connect(delay); // Feedback loop
-  delay.connect(stereoPanner);
+  delay.connect(delayMix);
+  delayMix.connect(stereoPanner);
   
   // Reverb path
   compressor.connect(convolver);
@@ -809,64 +830,84 @@ async function enableAudioforMode(modeConfig){
     videoEl.muted = false;  //we call this for user gesture
     videoEl.volume=1.0;
   }
-  // Comfort (flat): clean, centered, no room
+  // DRAMATICALLY different audio profiles for each mode
   if (modeConfig.screenCurve === 0) {
-    masterGain.gain.value = 0.98;
-    lowShelf.gain.value=2.0;
-    highShelf.gain.value=0.6;
-    stereoPanner.pan.value = 0.0;   // fixed center
-    delayFeedback.gain.value = 0.0; // no echo
-    reverbGain.gain.value = 0.0;    // no reverb
-  }
-  // Immersive (sphere): wider & roomier
-  else {
-    masterGain.gain.value = 1.25;   // tiny loudness lift
-    lowShelf.gain.value=4.0;
-    highShelf.gain.value=1.8;
-    stereoPanner.pan.value = 0.0;   // render loop will animate yaw → pan
-    delayFeedback.gain.value = 0.35; // subtle echo “size”
-    reverbGain.gain.value = 0.16;    // gentle ambience (if IR loaded, else soft smear)
+
+    // COMFORT MODE: Clean, intimate, focused sound
+    console.log('Applying COMFORT audio profile');
+    
+    masterGain.gain.setTargetAtTime(0.85, audioCtx.currentTime, 0.1);
+    
+    // Clean, natural EQ
+    lowShelf.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);      // Slight bass warmth
+    if (window.midRange) window.midRange.gain.setTargetAtTime(-1.0, audioCtx.currentTime, 0.1); // Reduce muddiness
+    highShelf.gain.setTargetAtTime(0.6, audioCtx.currentTime, 0.1);        // Clear highs
+    
+    // Minimal spatial effects - stay centered
+    stereoPanner.pan.value = 0.0;
+    if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.00, audioCtx.currentTime, 0.1); // Almost no widening
+    
+    
+    // No reverb or delay - intimate sound
+    delayFeedback.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
+    reverbGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
+    if (window.delayMix) window.delayMix.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1); // Completely bypass delay
+    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1); // No enhancement
+    
+  } else {
+    // IMMERSIVE MODE: Full 3D spatial experience with rich acoustics
+    console.log('Applying IMMERSIVE audio profile');
+    masterGain.gain.setTargetAtTime(1.15, audioCtx.currentTime, 0.1);     // Louder for impact
+    
+    // Enhanced frequency response for immersion
+    lowShelf.gain.setTargetAtTime(6, audioCtx.currentTime, 0.1);         // Deep, powerful bass
+    if (window.midRange) window.midRange.gain.setTargetAtTime(2, audioCtx.currentTime, 0.1);   // Present mids
+    highShelf.gain.setTargetAtTime(3.5, audioCtx.currentTime, 0.1);      // Sparkling highs
+    
+    // Full spatial processing
+    if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.1); // Wide soundstage
+    
+    // Rich environmental acoustics
+    delayFeedback.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.1);  // Spacious echo
+    reverbGain.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);     // Cathedral-like reverb
+    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.1); // Rich harmonics
+    
+    // Longer delay for bigger space feeling
+    delay.delayTime.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
+    if (window.delayMix) window.delayMix.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.1); // Enable delay
   }
 
   audioReady = true;
-  console.log('🔊 Audio enabled for', modeConfig.name);
+  console.log('Enhanced audio enabled for', modeConfig.name, 'with dramatic profile differences');
 }
 
-  function ensureUnmuteOverlay(){
-    if(document.getElementById('unmuteOverlay')) return;
-    const btn = document.createElement('button');
-    btn.id = 'unmuteOverlay'
-    btn.textContent = 'Tap for Sound';
-    btn.style.cssText=`
-    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
-    z-index: 1004; padding: 10px 14px; border-radius: 10px;
-    border: 1px solid rgba(120,160,255,.35); color: #fff;
-    background: rgba(15,20,40,.85); font-weight: 700; cursor: pointer;
-    `;
-    btn.addEventListener('click',async()=>{
-      buildAudioGraph(videoEl);
-      await enableAudioforMode(COMFORT_MODES[currentMode]);
-      btn.remove()
-      toast('Sound on');
-    });
-    document.body.appendChild(btn);
-  }
-
-
-async function startXR() {
-  console.log('🚀 Starting XR mode...');
   
+// One-tap XR start (desktop/laptop). Pass userGesture = true from the hero click.
+async function startXR(userGesture = false) {
+  console.log('🚀 Starting XR mode…');
+
+  // Ensure renderer/scene/camera exist
   if (!renderer) {
-    console.log('No renderer found, building scene...');
-    buildScene();
+    console.log('No renderer found, building scene…');
+    buildScene(); // creates renderer, scene, camera, room, stars, and initial screen
   }
-  
-  xrWrap.style.display = 'block';
-  console.log('XR wrapper displayed');
 
-  await attachVideoToScreen();
+  // Show the XR wrapper (your container for the canvas/controls)
+  if (typeof xrWrap !== 'undefined' && xrWrap) {
+    xrWrap.style.display = 'block';
+    console.log('XR wrapper displayed');
+  }
 
-  // Add VR button for headset users
+  // Attach the video and start playback.
+  // If this was triggered by the hero click, pass true so audio starts immediately.
+  await attachVideoToScreen(userGesture);
+
+  // Make sure the very first frame is visible without extra taps
+  if (typeof recenterToTheater === 'function') {
+    recenterToTheater();
+  }
+
+  // Add VR button (for headset users) once
   if (!document.getElementById('vrbtn')) {
     const btn = VRButton.createButton(renderer);
     btn.id = 'vrbtn';
@@ -874,190 +915,221 @@ async function startXR() {
       position: fixed; right: 10px; bottom: 12px; z-index: 999;
       background: rgba(56,182,255,.9); color: #fff; border: 0;
       padding: 12px 16px; border-radius: 8px; font-weight: 700;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      cursor: pointer;
     `;
     document.body.appendChild(btn);
   }
 
-  // Ensure render loop is active
+  // Start / refresh the render loop
   renderer.setAnimationLoop(() => {
-    if (controls) controls.update();
-    if (mwControls) mwControls.update();
-  
-    // === Audio panner update (ADD inside the render loop) ===
-    // === Enhanced spatial audio update ===
-if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
-  const cfg = COMFORT_MODES[currentMode];
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  const yaw = Math.atan2(dir.x, -dir.z);
-  
-  if (cfg.screenCurve === 0) {
-    // COMFORT MODE: Fixed center, no movement
-    stereoPanner.pan.value = 0;
-    
-    // Keep reverb and delay minimal
-    if (reverbGain) reverbGain.gain.value = 0;
-    if (delayFeedback) delayFeedback.gain.value = 0;
-    
-  } else if (cfg.screenCurve === 70) {
-    // CINEMA MODE: Gentle panning, moderate space
-    const pan = Math.max(-0.4, Math.min(0.4, (yaw / (Math.PI / 2)) * 0.25));
-    stereoPanner.pan.value = pan;
-    
-    // Distance-based reverb adjustment
-    const distance = camera.position.length();
-    const reverbLevel = Math.max(0.15, Math.min(0.35, 0.25 + distance * 0.02));
-    if (reverbGain) reverbGain.gain.value = reverbLevel;
-    
-  } else {
-    // IMMERSIVE MODE: Full 3D spatial experience
-    const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.85));
-    stereoPanner.pan.value = pan;
-    
-    // Dynamic acoustic space based on head movement
-    const distance = camera.position.length();
-    const velocity = Math.abs(yaw - (window.lastYaw || 0)) * 100;
-    window.lastYaw = yaw;
-    
-    // Reverb responds to movement and distance
-    const baseReverb = 0.35;
-    const movementReverb = Math.min(0.15, velocity * 0.3);
-    const distanceReverb = Math.max(0.1, Math.min(0.2, distance * 0.03));
-    const totalReverb = Math.min(0.6, baseReverb + movementReverb + distanceReverb);
-    
-    if (reverbGain) reverbGain.gain.setTargetAtTime(totalReverb, audioCtx.currentTime, 0.1);
-    
-    // Delay feedback responds to turning speed
-    const delayAmount = Math.max(0.25, Math.min(0.5, 0.35 + velocity * 0.2));
-    if (delayFeedback) delayFeedback.gain.setTargetAtTime(delayAmount, audioCtx.currentTime, 0.05);
-    
-    // High frequency filtering based on angle (simulates head shadow effect)
-    const hfAttenuation = 1.0 - Math.abs(pan) * 0.3;
-    if (window.highShelf) {
-      window.highShelf.gain.setTargetAtTime(3.5 * hfAttenuation, audioCtx.currentTime, 0.05);
+    // Update whichever controls are active
+    if (typeof controls !== 'undefined' && controls) controls.update();
+    if (typeof mwControls !== 'undefined' && mwControls) mwControls.update();
+    // Check if video is ready but texture doesn't exist yet
+    if (videoEl && !videoTex && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      // Create texture if it doesn't exist
+      videoTex = createVideoTexture(videoEl);
+      const cfg = COMFORT_MODES[currentMode];
+      const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
+      const mat = new THREE.MeshBasicMaterial({
+        map: videoTex,
+        toneMapped: false,
+        side
+      });
+      if (screen.material) screen.material.dispose();
+        screen.material = mat;
     }
+
+    // Keep the video texture fresh
+    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      videoTex.needsUpdate = true;
+    }
+
+    renderer.render(scene, camera);
+  });
+
+  setTimeout(() => {
+    if (videoTex) {
+      videoTex.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+  }, 100);
+
+
+  // UX feedback
+  const modeCfg = COMFORT_MODES[currentMode] || { name: 'Theater' };
+  toast(`${modeCfg.name} theater mode active`);
+  console.log(`✅ XR started in ${modeCfg.name} mode (userGesture=${userGesture})`);
+
+  if (typeof logPositions === 'function') {
+    logPositions('After XR Start');
   }
 }
-      
-    // Force video texture update
-    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
-    videoTex.needsUpdate = true;
-  }  
-  renderer.render(scene, camera);
-});
-  
-  const modeName = COMFORT_MODES[currentMode].name;
-  toast(`${modeName} theater mode active`);
-  console.log(`✅ XR started in ${modeName} mode`);
-  
-  logPositions('After XR Start');
-}
 
-// FIXED video attachment with proper error handling
-async function attachVideoToScreen() {
-  console.log('🎬 Attaching video to screen...');
-  
+async function attachVideoToScreen(userGesture = false) {
+  console.log('🎬 Attaching video to screen…');
+
   if (!screen) {
-    console.error("No screen found to attach video to!");
+    console.error('No screen found to attach video to!');
     return;
   }
 
+  // Create the video element once
   if (!videoEl) {
-    console.log('Creating video element...');
+    console.log('Creating <video> element…');
     videoEl = document.createElement('video');
-    videoEl.crossOrigin = 'anonymous';
-    videoEl.playsInline = true;
+    videoEl.crossOrigin = 'anonymous';          // CORS video textures
+    videoEl.playsInline = true;                 // iOS inline
     videoEl.setAttribute('webkit-playsinline', '');
     videoEl.setAttribute('playsinline', '');
     videoEl.preload = 'metadata';
     videoEl.loop = true;
-    videoEl.muted = true;  // start muted to satisfy autoplay; we unmute on gesture
+    videoEl.muted = true;                       // default muted; gesture path unmutes
     videoEl.volume = 0.8;
-    
+
     videoEl.onerror = (e) => {
       console.error('Video error:', e, videoEl.error);
       toast('Video failed to load');
     };
-    
+
     videoEl.onloadeddata = () => {
-      console.log('✅ Video loaded successfully', {
-        width: videoEl.videoWidth,
-        height: videoEl.videoHeight,
-        duration: videoEl.duration?.toFixed(1) + 's'
+      console.log('✅ Video loaded', {
+        w: videoEl.videoWidth,
+        h: videoEl.videoHeight,
+        dur: (videoEl.duration || 0).toFixed(1) + 's'
       });
-      toast('Video ready - click to unmute');
     };
-    
-    videoEl.oncanplay = () => {
-      console.log('✅ Video can play, creating texture...');
-      
-      // Create texture when video is ready
+
+    let started = false;
+    videoEl.oncanplay = async () => {
+      if (started) return;
+      started = true;
+      console.log('✅ Video can play — creating texture…');
+
       if (!videoTex) {
-        videoTex = createVideoTexture(videoEl);
-        videoTex.needsUpdate=true;
+        videoTex = (typeof createVideoTexture === 'function')
+          ? createVideoTexture(videoEl)
+          : new THREE.VideoTexture(videoEl);
+
+        // Safe defaults for NPOT video
+        videoTex.needsUpdate = true;
         
-        // Apply to screen immediately
-        const config = COMFORT_MODES[currentMode];
-        const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
-        
-        const videoMaterial = new THREE.MeshBasicMaterial({ 
-          map: videoTex, 
-          toneMapped: false,
-          side: side
-        });
-        
-        if (screen.material) screen.material.dispose();
-        screen.material = videoMaterial;
-        // prepare audio graph (actual sound starts on user gesture)
-        if (!audioCtx){
-          buildAudioGraph(videoEl);
+        // CRITICAL FIX: Different flipY for different screen types
+        const cfg = COMFORT_MODES[currentMode];
+        if (cfg.screenCurve === 0) {
+          // Flat screen (comfort mode) - keep flipY false, UVs are manually flipped
+          videoTex.flipY = false;
+        } else {
+          // Curved screen (immersive mode) - use flipY true for proper orientation
+          videoTex.flipY = true;
         }
+        
+        videoTex.colorSpace = (THREE.SRGBColorSpace || THREE.sRGBEncoding);
+        videoTex.minFilter = THREE.LinearFilter;
+        videoTex.magFilter = THREE.LinearFilter;
+        videoTex.generateMipmaps = false;
+        videoTex.wrapS = videoTex.wrapT = THREE.ClampToEdgeWrapping;
+
+        // Apply to the current screen
+        const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
+
+        const mat = new THREE.MeshBasicMaterial({
+          map: videoTex,
+          toneMapped: false,
+          side
+        });
+
+        if (screen.material) screen.material.dispose();
+        screen.material = mat;
         console.log('✅ Video texture applied to screen');
+
+        // Force update after creating the texture
+        videoTex.needsUpdate = true;
+        
+        // Force an immediate render to show first frame
+        if (renderer && scene && camera) {
+          renderer.render(scene, camera);
+        }
       }
-      // We still need a user gesture to start sound on most browsers:
-      // show “Tap for sound” overlay (make sure ensureUnmuteOverlay() is top-level)
-        ensureUnmuteOverlay();
-    };
+
+      // Ensure audio graph exists
+      if (!audioCtx) {
+        try {
+          buildAudioGraph(videoEl);
+        } catch (e) {
+          console.warn('Audio graph build failed:', e);
+        }
+      }
+
+      // Start playback
+      try {
+        if (userGesture) {
+          // One-tap path: enable profile, unmute, play with sound
+          await enableAudioforMode(COMFORT_MODES[currentMode]);
+          videoEl.muted = false;
+          videoEl.volume = 1.0;
+        } else {
+          // Non-gesture path: attempt muted autoplay
+          videoEl.muted = true;
+        }
+
+        await videoEl.play();
+        console.log('✅ Video playing ' + (userGesture ? 'with sound' : '(muted)'));
+
+        // Remove any overlay if present
+        const btn = document.getElementById('unmuteOverlay');
+        if (btn) btn.remove();
+      } catch (err) {
+        console.warn('Autoplay/play failed:', err?.message || err);
+        toast('Tap to start video with sound');
+
+        // Fallback overlay only for the non-gesture case
+        const startVideo = async () => {
+          renderer.domElement.removeEventListener('click', startVideo);
+          try {
+            if (!audioCtx) buildAudioGraph(videoEl);
+            await enableAudioforMode(COMFORT_MODES[currentMode]);
+            videoEl.muted = false;
+            videoEl.volume = 1.0;
+            await videoEl.play();
+            const btn = document.getElementById('unmuteOverlay');
+            if (btn) btn.remove();
+            toast('Video playing with sound');
+          } catch (e2) {
+            console.error('Video play failed:', e2);
+          }
+        };
+        // ALWAYS add the fallback listener (even when userGesture === true)
+          renderer?.domElement.addEventListener('click', startVideo);
+      }
+    }
     
-    // Set video source
-    if (mp4) {
-      videoEl.src = mp4;
-      console.log('Video source set to:', mp4);
-    } else {
+  
+    // Set/refresh source at attach-time (dataset may have changed)
+    const heroEl = document.getElementById('hero');
+    const src =
+      (heroEl && heroEl.dataset && heroEl.dataset.mp4) ? heroEl.dataset.mp4 :
+      (typeof mp4 !== 'undefined' ? mp4 : '');
+
+    if (!src) {
       console.warn('No video source available');
       toast('No video source configured');
       return;
     }
-    
-    if (poster) videoEl.poster = poster;
-  }
 
-  try {
-    await videoEl.play();
-    console.log('✅ Video playing automatically (muted)');
-  } catch (error) {
-    console.warn('Video autoplay failed:', error.message);
-    toast('Click screen to start video with sound');
-        // One-click start with audio
-        const startVideo = async () => {
-        renderer.domElement.removeEventListener('click', startVideo);
-        try {
-         await videoEl.play(); // user gesture allows sound
-         console.log('✅ Video started after user interaction');
-         buildAudioGraph(videoEl);
-         await enableAudioforMode(COMFORT_MODES[currentMode]);
-         const btn = document.getElementById('unmuteOverlay');
-         if (btn) btn.remove();
-          toast('Video playing with sound');
-        } catch (e) {
-        console.error('Video play failed:', e);
-      }
-    };
-    renderer.domElement.addEventListener('click', startVideo);
+    videoEl.src = src;
+    console.log('Video source set to:', src);
+
+    const poster = heroEl && heroEl.dataset ? heroEl.dataset.poster : '';
+    if (poster) videoEl.poster = poster;
+
+    videoEl.load(); // ensure readiness after setting src
   }
 }
 
-// Optional: Audio debug logging
+    
+
 function logAudioState(label) {
   if (!audioCtx || !audioReady) return;
   
@@ -1090,12 +1162,13 @@ async function requestMotionPermission() {
   return true;
 }
 
-async function startMagicWindow() {
+async function startMagicWindow(userGesture=false) {
   console.log('📱 Starting Magic Window mode...');
   
   if (!renderer) buildScene();
   xrWrap.style.display = 'block';
-  await attachVideoToScreen();
+  await attachVideoToScreen(userGesture);
+  recenterToTheater();
 
   // Dispose orbit controls for mobile
   if (controls) {
@@ -1106,6 +1179,7 @@ async function startMagicWindow() {
   // Setup mobile orientation controls
   const config = COMFORT_MODES[currentMode];
   mwControls = new MobileOrientationControls(camera, config.yawOnly);
+  const granted = await requestMotionPermission(); // add this
   const connected = await mwControls.connect();
   
   if (!connected) {
@@ -1116,6 +1190,23 @@ async function startMagicWindow() {
   // Render loop for mobile
   renderer.setAnimationLoop(() => {
     if (mwControls) mwControls.update();
+      // Add the same check here too
+    if (videoEl && !videoTex && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      videoTex = createVideoTexture(videoEl);
+      const cfg = COMFORT_MODES[currentMode];
+      const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
+      const mat = new THREE.MeshBasicMaterial({
+        map: videoTex,
+        toneMapped: false,
+        side
+      });
+      if (screen.material) screen.material.dispose();
+      screen.material = mat;
+    }
+    // ADD THIS MISSING LINE - update texture if it exists
+    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      videoTex.needsUpdate = true;
+    }
     renderer.render(scene, camera);
   });
 
@@ -1126,7 +1217,7 @@ async function startMagicWindow() {
 }
 
 // Main initialization
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
   console.log('🎯 App initializing...');
   
   // Setup enhanced media players
@@ -1134,54 +1225,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Enhanced hero click handler
   hero.addEventListener('click', async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // Auto-detect best mode for ASUS ZenBook Duo
-    currentMode = detectBestMode();
-    console.log('Detected best mode for ZenBook Duo:', currentMode);
-    
-    // Show control panel
-    controlPanel.style.display = 'block';
-    document.getElementById('currentMode').textContent = COMFORT_MODES[currentMode].name;
-    
-    // Hide panel after 8 seconds
-    setTimeout(() => {
-      controlPanel.style.display = 'none';
-    }, 8000);
+  currentMode = detectBestMode();
+  console.log('Detected best mode:', currentMode);
 
-    // Check HTTPS requirement
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      toast('HTTPS required for VR features');
-      return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    toast('HTTPS required for VR features');
+    return;
+  }
+
+  try {
+    if (currentMode === 'desktop') {
+      await startXR(true);
+    } else {
+      await startMagicWindow(true);
     }
-  });
-
-  // FIXED Enter Theater button handler - optimized for laptop
-  document.addEventListener('click', async (e) => {
-    if (e.target.id === 'enterTheater') {
-      e.preventDefault();
-      document.getElementById('theaterControls').style.display = 'none';
-      
-      console.log('🎭 Entering theater mode on ASUS ZenBook Duo...');
-
-      // For laptop testing, always go to XR mode (desktop behavior)
-      try {
-        console.log('Starting XR mode for laptop...');
-        // we have a user gesture here; prep audio early
-        if (videoEl) {
-          buildAudioGraph(videoEl);
-          await enableAudioforMode(COMFORT_MODES[currentMode]);
-        } else {
-          // if videoEl gets created inside attachVideoToScreen, the oncanplay path will show the Unmute button anyway
-        }
-          await startXR();
-        return;
-      } catch (error) {
-        console.error('XR failed:', error);
-        toast('Theater mode failed - check console for details');
-      }
-    }
-  });
+  } catch (error) {
+    console.error('Start failed:', error);
+    toast('Start failed — see console');
+  }
+});
 
   // Deep-link support
   const q = new URLSearchParams(location.search);
@@ -1191,5 +1255,5 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Using custom video source:', qs);
   }
   
-  console.log('✅ App initialized successfully for ASUS ZenBook Duo');
-});
+  console.log(`✅ App initialized successfully for ${detectBestMode()}`);
+  });
