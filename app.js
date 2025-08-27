@@ -442,8 +442,8 @@ function buildTheaterScreen(mode = 'phone') {
 
     screenGeo = new THREE.SphereGeometry(
       radius,
-      128, 128,
-      3 * Math.PI / 2 - phiLength / 2, // center the arc on -Z
+      64, 64,
+      Math.PI / 2 - phiLength / 2, // center the arc on -Z
       phiLength,
       Math.PI / 2 - thetaLength / 2,
       thetaLength
@@ -930,6 +930,14 @@ async function startXR(userGesture = false) {
     renderer.render(scene, camera);
   });
 
+  setTimeout(() => {
+    if (videoTex) {
+      videoTex.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+  }, 100);
+
+
   // UX feedback
   const modeCfg = COMFORT_MODES[currentMode] || { name: 'Theater' };
   toast(`${modeCfg.name} theater mode active`);
@@ -1005,11 +1013,11 @@ async function attachVideoToScreen(userGesture = false) {
           side
         });
 
-        if (screen.material) screen.material.dispose();
+        //if (screen.material) screen.material.dispose();
         screen.material = mat;
         console.log('✅ Video texture applied to screen');
       
-        
+
         // ADD THIS HERE - AFTER creating the texture!
           videoTex.needsUpdate = true;
           
@@ -1017,7 +1025,7 @@ async function attachVideoToScreen(userGesture = false) {
           if (renderer && scene && camera) {
             renderer.render(scene, camera);
           }
-        }
+        
 
       // 2) Ensure audio graph exists
       if (!audioCtx) {
