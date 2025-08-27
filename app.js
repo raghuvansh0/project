@@ -405,11 +405,10 @@ function createStars() {
   return stars;
 }
 
-// FIXED screen building function with proper immersive positioning
 function buildTheaterScreen(mode = 'phone') {
   const config = COMFORT_MODES[mode];
-  
-  // Remove old screen
+
+  // Remove old screen if it exists
   if (screen) {
     scene.remove(screen);
     if (screen.material && screen.material.map) {
@@ -418,65 +417,66 @@ function buildTheaterScreen(mode = 'phone') {
     if (screen.material) screen.material.dispose();
     if (screen.geometry) screen.geometry.dispose();
   }
-  
+
   let screenGeo;
   let materialSide;
-  
+
   if (config.screenCurve === 0) {
-    // Flat screen for comfort mode
-    screenGeo = new THREE.PlaneGeometry(6, 3.375, 32, 18); // 16:9 ratio, bigger
+    // ✅ Flat screen (Comfort)
+    screenGeo = new THREE.PlaneGeometry(6, 3.375, 32, 18); // 16:9 ratio
     materialSide = THREE.FrontSide;
-    // Fixed : Flip UV coordinates to fix upside-down video
+
+    // Flip UVs so video isn’t upside down
     const uvAttr = screenGeo.attributes.uv;
-    for (let i=0;i < uvAttr.array.length; i+=2){
-      uvAttr.array[i+1] = 1 - uvAttr.array[i+1]; //flip Y coordinate
+    for (let i = 0; i < uvAttr.array.length; i += 2) {
+      uvAttr.array[i + 1] = 1 - uvAttr.array[i + 1];
     }
-    uvAttr.needsUpdate=true;
-    console.log('Created Flat Screen Geometry with fixed UV coordinates');
-  }
-  else {
-    // use a sphere segment for IMMERSIVE mode
+    uvAttr.needsUpdate = true;
+
+    console.log('Created flat screen geometry with fixed UV coordinates');
+  } else {
+    // ✅ Curved screen (Immersive)
     const radius = config.screenDistance;
-    const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
-    const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
-    
+    const phiLength   = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
+    const thetaLength = THREE.MathUtils.degToRad(90);                 // vertical span
+
     screenGeo = new THREE.SphereGeometry(
       radius,
       128, 128,
-      3*Math.PI/2 - phiLength/2, // phiStart: center forward  <-- CORRECT
-      phiLength,               // phiLength
-      Math.PI/2 - thetaLength/2, // thetaStart: center vertically
-      thetaLength              // thetaLength
+      3 * Math.PI / 2 - phiLength / 2, // center the arc on -Z
+      phiLength,
+      Math.PI / 2 - thetaLength / 2,
+      thetaLength
     );
-  
-    //✅ we are *inside* the segment → render its inside
-    materialSide = THREE.BackSide;
-      
-    console.log('Created immersive sphere segment with', config.screenCurve, 'degrees horizontal curve');
-   }
-  
-  // Create screen with visible placeholder material
-    const placeholderMaterial = new THREE.MeshBasicMaterial({
-    color: 0x333333,  // Dark grey instead of red
+
+    materialSide = THREE.BackSide; // we’re inside the arc
+    console.log('Created immersive sphere segment with', config.screenCurve, 'deg curve');
+  }
+
+  // Placeholder material (until video texture replaces it)
+  const placeholderMaterial = new THREE.MeshBasicMaterial({
+    color: 0x333333,
     side: materialSide,
     transparent: false
   });
-  
+
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
-  screen.position.set(...config.screenPosition);
-  // FIXED : Rotate curved screens to face camera properly
-  /*
-  if (config.screenCurve !== 0) {
-    screen.rotation.y = Math.PI; // Rotate around Y-axis to face camera
-    console.log("Rotated curved screen 180° to face camera");
-  }*/
-  
+
+  // ✅ Position depends on flat vs curved
+  if (config.screenCurve === 0) {
+    // flat screen can be moved in front of camera
+    screen.position.set(...config.screenPosition);
+  } else {
+    // curved screen must stay centered on origin so camera is inside it
+    screen.position.set(0, 0, 0);
+  }
+
   scene.add(screen);
 
-  // Update camera FOV for proper immersion
+  // Update camera FOV
   camera.fov = config.fov;
   camera.updateProjectionMatrix();
-  
+
   console.log(`Built ${config.name} theater:`, {
     distance: config.screenDistance,
     curve: config.screenCurve,
@@ -484,7 +484,7 @@ function buildTheaterScreen(mode = 'phone') {
     position: screen.position,
     side: materialSide
   });
-  
+
   return screen;
 }
 
@@ -897,21 +897,32 @@ async function enableAudioforMode(modeConfig){
   }*/
 
 
-async function startXR(userGesture=false) {
-  console.log('🚀 Starting XR mode...');
-  
+// One-tap XR start (desktop/laptop). Pass userGesture = true from the hero click.
+async function startXR(userGesture = false) {
+  console.log('🚀 Starting XR mode…');
+
+  // Ensure renderer/scene/camera exist
   if (!renderer) {
-    console.log('No renderer found, building scene...');
-    buildScene();
+    console.log('No renderer found, building scene…');
+    buildScene(); // creates renderer, scene, camera, room, stars, and initial screen
   }
-  
-  xrWrap.style.display = 'block';
-  console.log('XR wrapper displayed');
 
+  // Show the XR wrapper (your container for the canvas/controls)
+  if (typeof xrWrap !== 'undefined' && xrWrap) {
+    xrWrap.style.display = 'block';
+    console.log('XR wrapper displayed');
+  }
+
+  // Attach the video and start playback.
+  // If this was triggered by the hero click, pass true so audio starts immediately.
   await attachVideoToScreen(userGesture);
-  recenterToTheater();
 
-  // Add VR button for headset users
+  // Make sure the very first frame is visible without extra taps
+  if (typeof recenterToTheater === 'function') {
+    recenterToTheater();
+  }
+
+  // Add VR button (for headset users) once
   if (!document.getElementById('vrbtn')) {
     const btn = VRButton.createButton(renderer);
     btn.id = 'vrbtn';
@@ -919,83 +930,34 @@ async function startXR(userGesture=false) {
       position: fixed; right: 10px; bottom: 12px; z-index: 999;
       background: rgba(56,182,255,.9); color: #fff; border: 0;
       padding: 12px 16px; border-radius: 8px; font-weight: 700;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      cursor: pointer;
     `;
     document.body.appendChild(btn);
   }
 
-  // Ensure render loop is active
+  // Start / refresh the render loop
   renderer.setAnimationLoop(() => {
-    if (controls) controls.update();
-    if (mwControls) mwControls.update();
-  
-    // === Audio panner update (ADD inside the render loop) ===
-    // === Enhanced spatial audio update ===
-if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
-  const cfg = COMFORT_MODES[currentMode];
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  const yaw = Math.atan2(dir.x, -dir.z);
-  
-  if (cfg.screenCurve === 0) {
-    // COMFORT MODE: Fixed center, no movement
-    stereoPanner.pan.value = 0;
-    
-    // Keep reverb and delay minimal
-    if (reverbGain) reverbGain.gain.value = 0;
-    if (delayFeedback) delayFeedback.gain.value = 0;
-    
-  } else if (cfg.screenCurve === 70) {
-    // MODE: Gentle panning, moderate space
-    const pan = Math.max(-0.4, Math.min(0.4, (yaw / (Math.PI / 2)) * 0.25));
-    stereoPanner.pan.value = pan;
-    
-    // Distance-based reverb adjustment
-    const distance = camera.position.length();
-    const reverbLevel = Math.max(0.15, Math.min(0.35, 0.25 + distance * 0.02));
-    if (reverbGain) reverbGain.gain.value = reverbLevel;
-    
-  } else {
-    // IMMERSIVE MODE: Full 3D spatial experience
-    const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.85));
-    stereoPanner.pan.value = pan;
-    
-    // Dynamic acoustic space based on head movement
-    const distance = camera.position.length();
-    const velocity = Math.abs(yaw - (window.lastYaw || 0)) * 100;
-    window.lastYaw = yaw;
-    
-    // Reverb responds to movement and distance
-    const baseReverb = 0.35;
-    const movementReverb = Math.min(0.15, velocity * 0.3);
-    const distanceReverb = Math.max(0.1, Math.min(0.2, distance * 0.03));
-    const totalReverb = Math.min(0.6, baseReverb + movementReverb + distanceReverb);
-    
-    if (reverbGain) reverbGain.gain.setTargetAtTime(totalReverb, audioCtx.currentTime, 0.1);
-    
-    // Delay feedback responds to turning speed
-    const delayAmount = Math.max(0.25, Math.min(0.5, 0.35 + velocity * 0.2));
-    if (delayFeedback) delayFeedback.gain.setTargetAtTime(delayAmount, audioCtx.currentTime, 0.05);
-    
-    // High frequency filtering based on angle (simulates head shadow effect)
-    const hfAttenuation = 1.0 - Math.abs(pan) * 0.3;
-    if (window.highShelf) {
-      window.highShelf.gain.setTargetAtTime(3.5 * hfAttenuation, audioCtx.currentTime, 0.05);
-    }
-  }
-}
-      
-    // Force video texture update
+    // Update whichever controls are active
+    if (typeof controls !== 'undefined' && controls) controls.update();
+    if (typeof mwControls !== 'undefined' && mwControls) mwControls.update();
+
+    // Keep the video texture fresh
     if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
-    videoTex.needsUpdate = true;
-  }  
-  renderer.render(scene, camera);
-});
-  
-  const modeName = COMFORT_MODES[currentMode].name;
-  toast(`${modeName} theater mode active`);
-  console.log(`✅ XR started in ${modeName} mode`);
-  
-  logPositions('After XR Start');
+      videoTex.needsUpdate = true;
+    }
+
+    renderer.render(scene, camera);
+  });
+
+  // UX feedback
+  const modeCfg = COMFORT_MODES[currentMode] || { name: 'Theater' };
+  toast(`${modeCfg.name} theater mode active`);
+  console.log(`✅ XR started in ${modeCfg.name} mode (userGesture=${userGesture})`);
+
+  if (typeof logPositions === 'function') {
+    logPositions('After XR Start');
+  }
 }
 
 // FIXED: attach video + build texture + one-tap audio (gesture-aware)
