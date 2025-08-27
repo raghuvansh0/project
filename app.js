@@ -472,7 +472,7 @@ function buildTheaterScreen(mode = 'phone') {
   });
   
   return screen;
-}
+
 
 // ASUS ZenBook Duo optimized renderer
 function createMobileRenderer() {
