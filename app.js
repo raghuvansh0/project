@@ -999,15 +999,16 @@ if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
 }
 
 // FIXED video attachment with proper error handling
-async function attachVideoToScreen(userGesture=false) {
+// FIXED video attachment with proper gesture+audio handling
+async function attachVideoToScreen(userGesture = false) {
   console.log('🎬 Attaching video to screen...');
-  
-  
+
   if (!screen) {
-    console.error("No screen found to attach video to!");
+    console.error('No screen found to attach video to!');
     return;
   }
 
+  // Create the video element once
   if (!videoEl) {
     console.log('Creating video element...');
     videoEl = document.createElement('video');
@@ -1017,116 +1018,117 @@ async function attachVideoToScreen(userGesture=false) {
     videoEl.setAttribute('playsinline', '');
     videoEl.preload = 'metadata';
     videoEl.loop = true;
-    videoEl.muted = true;  // start muted to satisfy autoplay; we unmute on gesture
+    videoEl.muted = true;           // default muted; we unmute on gesture path
     videoEl.volume = 0.8;
-    
+
     videoEl.onerror = (e) => {
       console.error('Video error:', e, videoEl.error);
       toast('Video failed to load');
     };
-    
+
     videoEl.onloadeddata = () => {
-      console.log('✅ Video loaded successfully', {
-        width: videoEl.videoWidth,
-        height: videoEl.videoHeight,
-        duration: videoEl.duration?.toFixed(1) + 's'
+      console.log('✅ Video loaded', {
+        w: videoEl.videoWidth, h: videoEl.videoHeight,
+        dur: (videoEl.duration || 0).toFixed(1) + 's'
       });
-      toast('Video ready - click to unmute');
     };
-    
+
+    // When it’s ready to play, build texture & (optionally) audio graph
     videoEl.oncanplay = () => {
-      console.log('✅ Video can play, creating texture...');
-      
-      // Create texture when video is ready
+      console.log('✅ Video can play, creating texture…');
+
       if (!videoTex) {
         videoTex = createVideoTexture(videoEl);
-        videoTex.needsUpdate=true;
-        
-        // Apply to screen immediately
-        const config = COMFORT_MODES[currentMode];
-        const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
-        
-        const videoMaterial = new THREE.MeshBasicMaterial({ 
-          map: videoTex, 
+        videoTex.needsUpdate = true;
+
+        // Apply to current screen
+        const cfg  = COMFORT_MODES[currentMode];
+        const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
+
+        const mat = new THREE.MeshBasicMaterial({
+          map: videoTex,
           toneMapped: false,
-          side: side
+          side
         });
-        
+
         if (screen.material) screen.material.dispose();
-        screen.material = videoMaterial;
-        // prepare audio graph (actual sound starts on user gesture)
-        if (!audioCtx){
-          buildAudioGraph(videoEl);
-        }
+        screen.material = mat;
         console.log('✅ Video texture applied to screen');
       }
-      ensureUnmuteOverlay();
+
+      // Build audio graph once (no sound yet unless gesture path)
+      if (!audioCtx) {
+        buildAudioGraph(videoEl);
+      }
+
+      // Only show overlay when we did NOT come from a user gesture
+      if (!userGesture) {
+        ensureUnmuteOverlay();
+      }
     };
-    
-    // Set video source
-    if (mp4) {
-      videoEl.src = mp4;
-      console.log('Video source set to:', mp4);
-    } else {
+
+    // Set/refresh the source at attach-time (dataset may have changed)
+    const heroEl = document.getElementById('hero');
+    const src    = (heroEl && heroEl.dataset && heroEl.dataset.mp4) ? heroEl.dataset.mp4 : (typeof mp4 !== 'undefined' ? mp4 : '');
+
+    if (!src) {
       console.warn('No video source available');
       toast('No video source configured');
       return;
     }
-    
+
+    videoEl.src = src;
+    console.log('Video source set to:', src);
+
+    const poster = heroEl && heroEl.dataset ? heroEl.dataset.poster : '';
     if (poster) videoEl.poster = poster;
+
+    videoEl.load(); // ensure readiness after setting src
   }
 
+  // --- ONE-TAP LOGIC ---
   try {
-    await videoEl.play();
-    console.log('✅ Video playing automatically (muted)');
-  } catch (error) {
-    console.warn('Video autoplay failed:', error.message);
-    toast('Click screen to start video with sound');
-        // One-click start with audio
-        // >>> REPLACE this whole try/catch block <<<
-try {
-  if (userGesture) {
-    // We have a valid gesture: start with sound ON
-    if (!audioCtx) buildAudioGraph(videoEl);
-    await enableAudioforMode(COMFORT_MODES[currentMode]);
-
-    videoEl.muted = false;
-    videoEl.volume = 1.0;
-
-    await videoEl.play();
-    console.log('✅ Video playing with sound from user gesture');
-    const btn = document.getElementById('unmuteOverlay');
-    if (btn) btn.remove();
-  } else {
-    // No gesture: attempt muted autoplay, fall back to overlay
-    videoEl.muted = true;
-    await videoEl.play();
-    console.log('✅ Video playing automatically (muted)');
-  }
-} catch (error) {
-  console.warn('Video autoplay failed:', error.message);
-  toast('Click screen to start video with sound');
-
-  // Fallback overlay path
-  const startVideo = async () => {
-    renderer.domElement.removeEventListener('click', startVideo);
-    try {
+    if (userGesture) {
+      // We have a valid gesture: enable profile, unmute, and play with sound
       if (!audioCtx) buildAudioGraph(videoEl);
       await enableAudioforMode(COMFORT_MODES[currentMode]);
+
       videoEl.muted = false;
       videoEl.volume = 1.0;
+
       await videoEl.play();
+      console.log('✅ Playing with sound (from user gesture)');
       const btn = document.getElementById('unmuteOverlay');
       if (btn) btn.remove();
-      toast('Video playing with sound');
-    } catch (e) {
-      console.error('Video play failed:', e);
+    } else {
+      // No gesture: attempt muted autoplay; if blocked, fall back to overlay
+      videoEl.muted = true;
+      await videoEl.play();
+      console.log('✅ Playing automatically (muted)');
     }
-  };
-  ensureUnmuteOverlay();
-  renderer.domElement.addEventListener('click', startVideo);
-}
+  } catch (err) {
+    console.warn('Autoplay failed:', err?.message || err);
+    toast('Tap to start video with sound');
 
+    // Overlay fallback for non-gesture path
+    const startVideo = async () => {
+      renderer.domElement.removeEventListener('click', startVideo);
+      try {
+        if (!audioCtx) buildAudioGraph(videoEl);
+        await enableAudioforMode(COMFORT_MODES[currentMode]);
+        videoEl.muted = false;
+        videoEl.volume = 1.0;
+        await videoEl.play();
+        const btn = document.getElementById('unmuteOverlay');
+        if (btn) btn.remove();
+        toast('Video playing with sound');
+      } catch (e) {
+        console.error('Video play failed:', e);
+      }
+    };
+    ensureUnmuteOverlay();
+    renderer.domElement.addEventListener('click', startVideo);
+  }
 }
 
 // Optional: Audio debug logging
@@ -1254,4 +1256,3 @@ document.addEventListener('DOMContentLoaded', function() {
   
   console.log('✅ App initialized successfully for ASUS ZenBook Duo');
 }); 
-
