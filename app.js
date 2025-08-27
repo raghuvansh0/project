@@ -666,7 +666,6 @@ function createVideoTexture(videoElement) {
   
   // CRITICAL FIX: Proper texture settings to avoid WebGL errors
   texture.flipY = false;
-  //texture.format = THREE.RGBAFormat;     // FIXED: Use RGB format ; Let Three.js auto detect
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -1047,6 +1046,7 @@ async function attachVideoToScreen() {
         const src = heroEl?.dataset?.mp4 || mp4;
         if (src) {
             videoEl.src = src;
+            videoEl.load();
             console.log('Video source set to:', src);
         }
     }
