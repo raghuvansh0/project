@@ -442,10 +442,11 @@ function buildTheaterScreen(mode = 'phone') {
     const phiLength   = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
     const thetaLength = THREE.MathUtils.degToRad(90);                 // vertical span
 
+    const phiStart = (3 * Math.PI) / 2 - phiLength / 2; // ✅ center the arc on −Z
     screenGeo = new THREE.SphereGeometry(
       radius,
       64, 64,
-      Math.PI / 2 - phiLength / 2, // center the arc on -Z
+      phiStart,
       phiLength,
       Math.PI / 2 - thetaLength / 2,
       thetaLength
