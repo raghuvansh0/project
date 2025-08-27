@@ -452,7 +452,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
+    screen.rotation.x = Math.PI; // ✅ face the camera (-Z)
     console.log("Rotated curved screen 180° to face camera");
   }
   
@@ -544,6 +544,11 @@ function buildScene() {
   glow.rotation.x = -Math.PI / 2;
   glow.position.y = 0.01;
   scene.add(glow);
+
+  // Ambient vibe lighting (doesn't affect the video, but tints stars/UI)
+  const hemi = new THREE.HemisphereLight(0x4a6b8a, 0x050810, 0.25);
+  scene.add(hemi);
+
 
   // Setup controls based on mode
   if (config.screenCurve === 0) {
