@@ -877,7 +877,7 @@ async function enableAudioforMode(modeConfig){
   console.log('Enhanced audio enabled for', modeConfig.name, 'with dramatic profile differences');
 }
 
-  function ensureUnmuteOverlay(){
+  /*function ensureUnmuteOverlay(){
     if(document.getElementById('unmuteOverlay')) return;
     const btn = document.createElement('button');
     btn.id = 'unmuteOverlay'
@@ -895,7 +895,7 @@ async function enableAudioforMode(modeConfig){
       toast('Sound on');
     });
     document.body.appendChild(btn);
-  }
+  }*/
 
 
 async function startXR(userGesture=false) {
@@ -999,116 +999,66 @@ if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
 }
 
 // FIXED video attachment with proper error handling
-// FIXED video attachment with proper gesture+audio handling
-async function attachVideoToScreen(userGesture = false) {
-  console.log('🎬 Attaching video to screen...');
+// Replace the complex attachVideoToScreen with this simpler version:
+async function attachVideoToScreen() {
+    console.log('🎬 Attaching video to screen...');
 
-  if (!screen) {
-    console.error('No screen found to attach video to!');
-    return;
-  }
-
-  // Create the video element once
-  if (!videoEl) {
-    console.log('Creating video element...');
-    videoEl = document.createElement('video');
-    videoEl.crossOrigin = 'anonymous';
-    videoEl.playsInline = true;
-    videoEl.setAttribute('webkit-playsinline', '');
-    videoEl.setAttribute('playsinline', '');
-    videoEl.preload = 'metadata';
-    videoEl.loop = true;
-    videoEl.muted = true;           // default muted; we unmute on gesture path
-    videoEl.volume = 0.8;
-
-    videoEl.onerror = (e) => {
-      console.error('Video error:', e, videoEl.error);
-      toast('Video failed to load');
-    };
-
-    videoEl.onloadeddata = () => {
-      console.log('✅ Video loaded', {
-        w: videoEl.videoWidth, h: videoEl.videoHeight,
-        dur: (videoEl.duration || 0).toFixed(1) + 's'
-      });
-    };
-
-    // When it’s ready to play, build texture & (optionally) audio graph
-    videoEl.oncanplay = () => {
-      console.log('✅ Video can play, creating texture…');
-
-      if (!videoTex) {
-        videoTex = createVideoTexture(videoEl);
-        videoTex.needsUpdate = true;
-
-        // Apply to current screen
-        const cfg  = COMFORT_MODES[currentMode];
-        const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
-
-        const mat = new THREE.MeshBasicMaterial({
-          map: videoTex,
-          toneMapped: false,
-          side
-        });
-
-        if (screen.material) screen.material.dispose();
-        screen.material = mat;
-        console.log('✅ Video texture applied to screen');
-      }
-
-      // Build audio graph once (no sound yet unless gesture path)
-      if (!audioCtx) {
-        buildAudioGraph(videoEl);
-      }
-
-      // Only show overlay when we did NOT come from a user gesture
-      if (!userGesture) {
-        ensureUnmuteOverlay();
-      }
-    };
-
-    // Set/refresh the source at attach-time (dataset may have changed)
-    const heroEl = document.getElementById('hero');
-    const src    = (heroEl && heroEl.dataset && heroEl.dataset.mp4) ? heroEl.dataset.mp4 : (typeof mp4 !== 'undefined' ? mp4 : '');
-
-    if (!src) {
-      console.warn('No video source available');
-      toast('No video source configured');
-      return;
+    if (!screen) {
+        console.error('No screen found to attach video to!');
+        return;
     }
 
-    videoEl.src = src;
-    console.log('Video source set to:', src);
+    if (!videoEl) {
+        videoEl = document.createElement('video');
+        videoEl.crossOrigin = 'anonymous';
+        videoEl.playsInline = true;
+        videoEl.setAttribute('webkit-playsinline', '');
+        videoEl.setAttribute('playsinline', '');
+        videoEl.preload = 'metadata';
+        videoEl.loop = true;
+        videoEl.muted = false; // Start unmuted since we have gesture
+        videoEl.volume = 1.0;
 
-    const poster = heroEl && heroEl.dataset ? heroEl.dataset.poster : '';
-    if (poster) videoEl.poster = poster;
+        videoEl.oncanplay = () => {
+            if (!videoTex) {
+                videoTex = createVideoTexture(videoEl);
+                const config = COMFORT_MODES[currentMode];
+                const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
+                
+                const videoMaterial = new THREE.MeshBasicMaterial({ 
+                    map: videoTex, 
+                    toneMapped: false,
+                    side: side
+                });
+                
+                screen.material.dispose();
+                screen.material = videoMaterial;
+                console.log('✅ Video texture applied to screen');
+            }
+            
+            // Build audio graph
+            if (!audioCtx) {
+                buildAudioGraph(videoEl);
+                enableAudioforMode(COMFORT_MODES[currentMode]);
+            }
+        };
 
-    videoEl.load(); // ensure readiness after setting src
-  }
-
-  // --- ONE-TAP LOGIC ---
-  try {
-    if (userGesture) {
-      // We have a valid gesture: enable profile, unmute, and play with sound
-      if (!audioCtx) buildAudioGraph(videoEl);
-      await enableAudioforMode(COMFORT_MODES[currentMode]);
-
-      videoEl.muted = false;
-      videoEl.volume = 1.0;
-
-      await videoEl.play();
-      console.log('✅ Playing with sound (from user gesture)');
-      const btn = document.getElementById('unmuteOverlay');
-      if (btn) btn.remove();
-    } else {
-      // No gesture: attempt muted autoplay; if blocked, fall back to overlay
-      videoEl.muted = true;
-      await videoEl.play();
-      console.log('✅ Playing automatically (muted)');
+        const heroEl = document.getElementById('hero');
+        const src = heroEl?.dataset?.mp4 || mp4;
+        if (src) {
+            videoEl.src = src;
+            console.log('Video source set to:', src);
+        }
     }
-  } catch (err) {
-    console.warn('Autoplay failed:', err?.message || err);
-    toast('Tap to start video with sound');
+
+    try {
+        await videoEl.play();
+        console.log('✅ Video playing with sound');
+    } catch (error) {
+        console.error('Video play failed:', error);
+        toast('Video play failed');
+    }
+}
 
     // Overlay fallback for non-gesture path
     const startVideo = async () => {
@@ -1220,6 +1170,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   try {
+  /*  
     // Build scene once here so attachVideoToScreen has somewhere to put the texture
     if (!renderer) buildScene();
 
@@ -1230,15 +1181,15 @@ document.addEventListener('DOMContentLoaded', function() {
       /*buildAudioGraph(videoEl);
       await enableAudioforMode(COMFORT_MODES[currentMode]);
       videoEl.muted = false;
-      videoEl.volume = 1.0;*/
-    }
+      videoEl.volume = 1.0;
+      */
 
     if (isMobile() || isTablet()) {
       // Magic-window (device-orientation) on handhelds
-      await startMagicWindow(true);  //pass gesture flag
+      await startMagicWindow();  
     } else {
       // Desktop XR path on laptops/desktops
-      await startXR(true);
+      await startXR();
     }
   } catch (error) {
     console.error('Start failed:', error);
