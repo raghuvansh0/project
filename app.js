@@ -443,7 +443,7 @@ function buildTheaterScreen(mode = 'phone') {
     screenGeo = new THREE.SphereGeometry(
       radius,
       128, 128,
-      0, // phiStart: start from front
+      Math.PI/2 - phiLength/2, // phiStart: center forward  <-- CORRECT
       phiLength,               // phiLength
       Math.PI/2 - thetaLength/2, // thetaStart: center vertically
       thetaLength              // thetaLength
