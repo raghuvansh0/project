@@ -876,27 +876,7 @@ async function enableAudioforMode(modeConfig){
   console.log('Enhanced audio enabled for', modeConfig.name, 'with dramatic profile differences');
 }
 
-  /*function ensureUnmuteOverlay(){
-    if(document.getElementById('unmuteOverlay')) return;
-    const btn = document.createElement('button');
-    btn.id = 'unmuteOverlay'
-    btn.textContent = 'Tap for Sound';
-    btn.style.cssText=`
-    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
-    z-index: 1004; padding: 10px 14px; border-radius: 10px;
-    border: 1px solid rgba(120,160,255,.35); color: #fff;
-    background: rgba(15,20,40,.85); font-weight: 700; cursor: pointer;
-    `;
-    btn.addEventListener('click',async()=>{
-      buildAudioGraph(videoEl);
-      await enableAudioforMode(COMFORT_MODES[currentMode]);
-      btn.remove()
-      toast('Sound on');
-    });
-    document.body.appendChild(btn);
-  }*/
-
-
+  
 // One-tap XR start (desktop/laptop). Pass userGesture = true from the hero click.
 async function startXR(userGesture = false) {
   console.log('🚀 Starting XR mode…');
@@ -995,16 +975,13 @@ async function attachVideoToScreen(userGesture = false) {
       });
     };
 
-    // Build texture + audio and start playback when ready
     let started = false;
     videoEl.oncanplay = async () => {
       if (started) return;
       started = true;
       console.log('✅ Video can play — creating texture…');
 
-      // 1) Create/assign THREE.VideoTexture
       if (!videoTex) {
-        // Use your existing helper if present; otherwise create here:
         videoTex = (typeof createVideoTexture === 'function')
           ? createVideoTexture(videoEl)
           : new THREE.VideoTexture(videoEl);
@@ -1031,7 +1008,16 @@ async function attachVideoToScreen(userGesture = false) {
         if (screen.material) screen.material.dispose();
         screen.material = mat;
         console.log('✅ Video texture applied to screen');
-      }
+      
+        
+        // ADD THIS HERE - AFTER creating the texture!
+          videoTex.needsUpdate = true;
+          
+          // Force an immediate render to show first frame
+          if (renderer && scene && camera) {
+            renderer.render(scene, camera);
+          }
+        }
 
       // 2) Ensure audio graph exists
       if (!audioCtx) {
@@ -1082,7 +1068,6 @@ async function attachVideoToScreen(userGesture = false) {
         };
 
         if (!userGesture) {
-          ensureUnmuteOverlay();
           renderer.domElement.addEventListener('click', startVideo);
         }
       }
