@@ -1189,10 +1189,10 @@ document.addEventListener('DOMContentLoaded', function() {
   try {
      if (isMobile() || isTablet()) {
       // Magic-window (device-orientation) on handhelds
-      await startMagicWindow();  
+      await startMagicWindow(true);  
     } else {
       // Desktop XR path on laptops/desktops
-      await startXR();
+      await startXR(true);
     }
   } catch (error) {
     console.error('Start failed:', error);
