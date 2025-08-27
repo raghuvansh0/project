@@ -20,9 +20,9 @@ const COMFORT_MODES = {
     cameraPosition: [0, 1.6, 0],      // Camera at center
     screenPosition: [0, 1.6, -2.5]     // Screen in front
   },
-  desktop: {
-    screenDistance: 4.0,    // Optimized for laptop screen size
-    screenCurve: 130,       // Full wrap-around for immersion
+    desktop: {
+        screenDistance: 3.0,    // Adjusted for a narrower screen
+        screenCurve: 100,       // Slightly less curve for immersion
     fovMin: 65,
     fovMax:85,
     fov:78,
@@ -30,7 +30,16 @@ const COMFORT_MODES = {
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
     screenPosition: [0, 1.6, 0]       // sphere segment is centered at camera
-  }
+  },
+  tablet: {
+  screenDistance: 2.6,
+  screenCurve: 70,   // gentle wrap for tablets
+  fov: 74,
+  yawOnly: false,
+  name: 'Immersive',
+  cameraPosition: [0, 1.6, 0],
+  screenPosition: [0, 1.6, 0]
+  },
 };
 
 let currentMode = 'phone';
@@ -68,22 +77,27 @@ function inTelegram() {
 }
 
 function isMobile() {
-  // ASUS ZenBook Duo specific: treat as desktop even with touch
-  return false; // Force desktop behavior for laptop testing
+  // Phone-ish: narrow + touch or common mobile UA
+  return (
+    /Android|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) <= 768)
+  );
 }
 
 function isTablet() {
-  return (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && window.innerWidth > 768) ||
-         /iPad/i.test(navigator.userAgent);
+  // Tablet-ish: touch + medium viewport or obvious UA
+  return (
+    /iPad|Tablet|Android(?!.*Mobile)/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 0 &&
+     Math.min(window.innerWidth, window.innerHeight) > 768 &&
+     Math.min(window.innerWidth, window.innerHeight) <= 1200)
+  );
 }
 
 function detectBestMode() {
-  // Force desktop for Zenbook Duo testing
-  console.log('ZenBook Duo: Forcing desktop mode, window width:', window.innerWidth);
-  return 'desktop';  // Always return desktop for your testing
-  //if (window.innerWidth >= 1200) return 'desktop';  // Full immersive for laptop
-  //if (window.innerWidth >= 900) return 'tablet';    // Cinema mode for smaller windows
-  //return 'phone';  // Comfort fallback
+  if (isMobile()) return 'phone';     // Comfort (flat)
+  if (isTablet()) return 'tablet';    // Gentle curved
+  return 'desktop';                   // Full immersive curved
 }
 
 // Enhanced Media Player Setup
@@ -487,18 +501,15 @@ function createMobileRenderer() {
   };
 
   const renderer = new THREE.WebGLRenderer(options);
-  
-  // High quality for laptop screen
-  const pixelRatio = Math.min(window.devicePixelRatio, 2);
-  renderer.setPixelRatio(pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   
-  // Enable high-quality features for laptop
+  const maxDPR = isMobile() ? 1.5 : 2;
+  const pixelRatio = Math.min(window.devicePixelRatio, maxDPR);
+  renderer.setPixelRatio(pixelRatio);
   renderer.shadowMap.enabled = false; // Keep disabled for performance
   renderer.physicallyCorrectLights = false;
-  
-  console.log('Created ASUS ZenBook Duo optimized renderer with pixel ratio:', pixelRatio);
+
   return renderer;
 }
 
@@ -934,7 +945,7 @@ if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
     if (delayFeedback) delayFeedback.gain.value = 0;
     
   } else if (cfg.screenCurve === 70) {
-    // CINEMA MODE: Gentle panning, moderate space
+    // MODE: Gentle panning, moderate space
     const pan = Math.max(-0.4, Math.min(0.4, (yaw / (Math.PI / 2)) * 0.25));
     stereoPanner.pan.value = pan;
     
@@ -1048,9 +1059,7 @@ async function attachVideoToScreen() {
         }
         console.log('✅ Video texture applied to screen');
       }
-      // We still need a user gesture to start sound on most browsers:
-      // show “Tap for sound” overlay (make sure ensureUnmuteOverlay() is top-level)
-        ensureUnmuteOverlay();
+      ensureUnmuteOverlay();
     };
     
     // Set video source
@@ -1140,6 +1149,7 @@ async function startMagicWindow() {
   // Setup mobile orientation controls
   const config = COMFORT_MODES[currentMode];
   mwControls = new MobileOrientationControls(camera, config.yawOnly);
+  const granted = await requestMotionPermission(); // add this
   const connected = await mwControls.connect();
   
   if (!connected) {
@@ -1168,61 +1178,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Enhanced hero click handler
   hero.addEventListener('click', async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // Auto-detect best mode for ASUS ZenBook Duo
-    currentMode = detectBestMode();
-    console.log('Detected best mode for ZenBook Duo:', currentMode);
-  
-    // Check HTTPS requirement
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      toast('HTTPS required for VR features');
-      return;
+  currentMode = detectBestMode();
+  console.log('Detected best mode:', currentMode);
+
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    toast('HTTPS required for VR features');
+    return;
+  }
+
+  try {
+    // Build scene once here so attachVideoToScreen has somewhere to put the texture
+    if (!renderer) buildScene();
+
+    // Because this click is a user gesture, unlock audio up-front
+    if (videoEl) {
+      buildAudioGraph(videoEl);
+      await enableAudioforMode(COMFORT_MODES[currentMode]);
+      videoEl.muted = false;
+      videoEl.volume = 1.0;
     }
-      //Go directly to theater mode
-      console.log('🎭 Entering theater mode directly...');
-      try{
-        console.log('Starting XR mode for laptop...');
-        // Prep audio early since we have user gesture
-        if(videoEl){
-          buildAudioGraph(videoEl);
-          await enableAudioforMode(COMFORT_MODES[currentMode]);
-        }
-        await startXR();
-      } catch(error) {
-        console.error('XR failed:',error);
-        toast('Theater mode failed - check console for details');
-      }
-  });
 
-  /*
-  // FIXED Enter Theater button handler - optimized for laptop
-  document.addEventListener('click', async (e) => {
-    if (e.target.id === 'enterTheater') {
-      e.preventDefault();
-      document.getElementById('theaterControls').style.display = 'none';
-      
-      console.log('🎭 Entering theater mode on ASUS ZenBook Duo...');
-
-      // For laptop testing, always go to XR mode (desktop behavior)
-      try {
-        console.log('Starting XR mode for laptop...');
-        // we have a user gesture here; prep audio early
-        if (videoEl) {
-          buildAudioGraph(videoEl);
-          await enableAudioforMode(COMFORT_MODES[currentMode]);
-        } else {
-          // if videoEl gets created inside attachVideoToScreen, the oncanplay path will show the Unmute button anyway
-        }
-          await startXR();
-        return;
-      } catch (error) {
-        console.error('XR failed:', error);
-        toast('Theater mode failed - check console for details');
-      }
+    if (isMobile() || isTablet()) {
+      // Magic-window (device-orientation) on handhelds
+      await startMagicWindow();
+    } else {
+      // Desktop XR path on laptops/desktops
+      await startXR();
     }
-  });
-*/
+  } catch (error) {
+    console.error('Start failed:', error);
+    toast('Start failed — see console');
+  }
+});
+
   // Deep-link support
   const q = new URLSearchParams(location.search);
   const qs = q.get('src');
