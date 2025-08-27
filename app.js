@@ -399,7 +399,7 @@ function createStars() {
     opacity: 0.3,     // More transparent
     sizeAttenuation: true
   });
-
+  starsMaterial.depthWrite = false; // <-- add this
   const stars = new THREE.Points(starsGeometry, starsMaterial);
   scene.add(stars);
 
