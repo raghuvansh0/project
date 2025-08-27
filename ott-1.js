@@ -471,7 +471,9 @@ function buildTheaterScreen(mode = 'phone') {
     screen.position.set(...config.screenPosition);
   } else {
     // curved screen must stay centered on origin so camera is inside it
-    screen.position.set(0, 0, 0);
+    //screen.position.set(0, 0, 0);
+    screen.rotation.x = Math.PI; // ✅ face the camera (-Z)
+    console.log("Rotated curved screen 180° to face camera");
   }
 
   scene.add(screen);
