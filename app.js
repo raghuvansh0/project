@@ -424,12 +424,12 @@ function buildTheaterScreen(mode = 'phone') {
     // use a sphere segment for IMMERSIVE mode
     const radius = config.screenDistance;
     const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
-    const thetaLength = THREE.MathUtils.degToRad(110); // vertical span (half dome)
+    const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
     
     screenGeo = new THREE.SphereGeometry(
       radius,
       128, 128,
-      3*Math.PI/2 - phiLength/2, // phiStart: center forward 3* added now
+      Math.PI/2 - phiLength/2, // phiStart: center forward
       phiLength,               // phiLength
       Math.PI/2 - thetaLength/2, // thetaStart: tilt vertical window
       thetaLength              // thetaLength
@@ -452,7 +452,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    screen.rotation.x = Math.PI; // ✅ face the camera (-Z)
+    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
     console.log("Rotated curved screen 180° to face camera");
   }
   
@@ -568,7 +568,7 @@ function buildScene() {
   } else {
     // Curved screen - free look controls
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0,1.6,-1);
+    controls.target.set(0, 1.6, -2); // Look slightly forward
     controls.enableDamping = true;
     controls.dampingFactor = 0.02;
     controls.minDistance = 0.1;
@@ -615,7 +615,7 @@ function rebuildTheaterWithMode(mode) {
       controls.enableZoom = true;
     } else {
       // Curved screen controls
-      controls.target.set(0, 1.6, -1);  // ✅ critical for Immersive
+      controls.target.set(0, 1.6, -2);  // ✅ critical for Immersive
       controls.minDistance = 0.1;
       controls.maxDistance = 1;
       controls.enableZoom = false;
