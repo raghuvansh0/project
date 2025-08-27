@@ -1175,23 +1175,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-detect best mode for ASUS ZenBook Duo
     currentMode = detectBestMode();
     console.log('Detected best mode for ZenBook Duo:', currentMode);
-    
-    // Show control panel
-    controlPanel.style.display = 'block';
-    document.getElementById('currentMode').textContent = COMFORT_MODES[currentMode].name;
-    
-    // Hide panel after 8 seconds
-    setTimeout(() => {
-      controlPanel.style.display = 'none';
-    }, 8000);
-
+  
     // Check HTTPS requirement
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
       toast('HTTPS required for VR features');
       return;
     }
+      //Go directly to theater mode
+      console.log('🎭 Entering theater mode directly...');
+      try{
+        console.log('Starting XR mode for laptop...');
+        // Prep audio early since we have user gesture
+        if(videoEl){
+          buildAudioGraph(videoEl);
+          await enableAudioforMode(COMFORT_MODES[currentMode]);
+        }
+        await startXR();
+      } catch(error) {
+        console.error('XR failed:',error);
+        toast('Theater mode failed - check console for details');
+      }
   });
 
+  /*
   // FIXED Enter Theater button handler - optimized for laptop
   document.addEventListener('click', async (e) => {
     if (e.target.id === 'enterTheater') {
@@ -1218,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
-
+*/
   // Deep-link support
   const q = new URLSearchParams(location.search);
   const qs = q.get('src');
@@ -1228,4 +1234,4 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   console.log('✅ App initialized successfully for ASUS ZenBook Duo');
-});
+}); 
