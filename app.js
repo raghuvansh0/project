@@ -1189,6 +1189,10 @@ async function startMagicWindow(userGesture=false) {
       if (screen.material) screen.material.dispose();
       screen.material = mat;
     }
+    // ADD THIS MISSING LINE - update texture if it exists
+    if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      videoTex.needsUpdate = true;
+    }
     renderer.render(scene, camera);
   });
 
