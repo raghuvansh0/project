@@ -72,33 +72,37 @@ async function xrSupported() {
   }
 }
 
-function inTelegram() {
-  return /Telegram/i.test(navigator.userAgent) || (window.Telegram && window.Telegram.WebApp);
+
+function isSmallTouch() {
+  const sw = Math.min(window.screen.width, window.screen.height);
+  return navigator.maxTouchPoints >= 1 && sw <= 800;
 }
 
-function isMobile() {
-  // Phone-ish: narrow + touch or common mobile UA
-  return (
-    /Android|iPhone|iPod/i.test(navigator.userAgent) ||
-    (navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) <= 768)
-  );
+function isTabletSizedTouch() {
+  const sw = Math.min(window.screen.width, window.screen.height);
+  return navigator.maxTouchPoints >= 1 && sw > 800 && sw <= 1200;
 }
 
-function isTablet() {
-  // Tablet-ish: touch + medium viewport or obvious UA
-  return (
-    /iPad|Tablet|Android(?!.*Mobile)/i.test(navigator.userAgent) ||
-    (navigator.maxTouchPoints > 0 &&
-     Math.min(window.innerWidth, window.innerHeight) > 768 &&
-     Math.min(window.innerWidth, window.innerHeight) <= 1200)
-  );
+function isDesktopOS() {
+  return /(Win|Mac|Linux)/i.test(navigator.platform || '') || /X11|CrOS/i.test(navigator.userAgent);
 }
 
 function detectBestMode() {
-  if (isMobile()) return 'phone';     // Comfort (flat)
-  if (isTablet()) return 'tablet';    // Gentle curved
-  return 'desktop';                   // Full immersive curved
+  // Manual override first: ?mode=phone|tablet|desktop
+  const override = new URLSearchParams(location.search).get('mode');
+  if (override && ['phone','tablet','desktop'].includes(override)) {
+    console.log('Using manual override mode:', override);
+    return override;
+  }
+
+  // Touch devices with small/medium screens count as phone/tablet.
+  if (isSmallTouch()) return 'phone';
+  if (isTabletSizedTouch()) return 'tablet';
+
+  // Everything else (including touch laptops) = desktop
+  return 'desktop';
 }
+
 
 // Enhanced Media Player Setup
 function setupMediaPlayers() {
@@ -1086,7 +1090,9 @@ async function attachVideoToScreen(userGesture = false) {
             console.error('Video play failed:', e2);
           }
         };
-
+        // ALWAYS add the fallback listener (even when userGesture === true)
+          renderer?.domElement.addEventListener('click', startVideo);
+      }
         if (!userGesture) {
           renderer.domElement.addEventListener('click', startVideo);
         }
@@ -1222,12 +1228,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   try {
-     if (isMobile() || isTablet()) {
-      // Magic-window (device-orientation) on handhelds
-      await startMagicWindow(true);  
-    } else {
-      // Desktop XR path on laptops/desktops
+    if (currentMode === 'desktop') {
       await startXR(true);
+    } else {
+      await startMagicWindow(true);
     }
   } catch (error) {
     console.error('Start failed:', error);
