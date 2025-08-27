@@ -1119,7 +1119,7 @@ async function attachVideoToScreen(userGesture = false) {
 
     videoEl.load(); // ensure readiness after setting src
   }
-}
+
     
 
 function logAudioState(label) {
