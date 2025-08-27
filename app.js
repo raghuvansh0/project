@@ -1099,9 +1099,6 @@ async function attachVideoToScreen(userGesture = false) {
 
     videoEl.load(); // ensure readiness after setting src
   }
-
-  // Nothing else needed here — playback starts inside oncanplay()
-}
     
 
 function logAudioState(label) {
