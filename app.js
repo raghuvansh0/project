@@ -247,7 +247,7 @@ function recenterToTheater() {
      controls.target.set(...config.screenPosition); // flat: aim at the plane
     }   
     else {
-      controls.target.set(0, 1.6, -1);               // curved: aim forward
+      controls.target.set(0, 1.6, -2);               // curved: aim forward
     }
     controls.update();
   }
@@ -466,7 +466,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
     // FIXED : Rotate curved screens 180 deg to face camera
     if (config.screenCurve!==0) {
-        screen.rotation.x = Math.PI; // Rotate around X-axis to face camera
+        screen.rotation.y = Math.PI; // Rotate around X-axis to face camera
         console.log("Rotated curved screen 180° to face camera");
     }
   
