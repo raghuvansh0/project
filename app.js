@@ -921,6 +921,20 @@ async function startXR(userGesture = false) {
     // Update whichever controls are active
     if (typeof controls !== 'undefined' && controls) controls.update();
     if (typeof mwControls !== 'undefined' && mwControls) mwControls.update();
+    // Check if video is ready but texture doesn't exist yet
+    if (videoEl && !videoTex && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      // Create texture if it doesn't exist
+      videoTex = createVideoTexture(videoEl);
+      const cfg = COMFORT_MODES[currentMode];
+      const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
+      const mat = new THREE.MeshBasicMaterial({
+        map: videoTex,
+        toneMapped: false,
+        side
+      });
+      if (screen.material) screen.material.dispose();
+        screen.material = mat;
+    }
 
     // Keep the video texture fresh
     if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
@@ -1162,6 +1176,19 @@ async function startMagicWindow(userGesture=false) {
   // Render loop for mobile
   renderer.setAnimationLoop(() => {
     if (mwControls) mwControls.update();
+      // Add the same check here too
+    if (videoEl && !videoTex && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      videoTex = createVideoTexture(videoEl);
+      const cfg = COMFORT_MODES[currentMode];
+      const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
+      const mat = new THREE.MeshBasicMaterial({
+        map: videoTex,
+        toneMapped: false,
+        side
+      });
+      if (screen.material) screen.material.dispose();
+      screen.material = mat;
+    }
     renderer.render(scene, camera);
   });
 
