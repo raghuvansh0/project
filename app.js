@@ -1051,13 +1051,48 @@ async function attachVideoToScreen() {
         }
     }
 
-    try {
-        await videoEl.play();
-        console.log('✅ Video playing with sound');
-    } catch (error) {
-        console.error('Video play failed:', error);
-        toast('Video play failed');
-    }
+    // Wait for video to be ready, then create texture
+    return new Promise((resolve) => {
+        videoEl.oncanplay = async () => {
+            if (!videoTex) {
+                videoTex = createVideoTexture(videoEl);
+                const config = COMFORT_MODES[currentMode];
+                const side = config.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
+                
+                const videoMaterial = new THREE.MeshBasicMaterial({ 
+                    map: videoTex, 
+                    toneMapped: false,
+                    side: side
+                });
+                
+                if (screen.material) screen.material.dispose();
+                screen.material = videoMaterial;
+                console.log('✅ Video texture applied to screen');
+
+                // Build audio graph
+                if (!audioCtx) {
+                    buildAudioGraph(videoEl);
+                    await enableAudioforMode(COMFORT_MODES[currentMode]);
+                }
+
+                // Now play the video
+                try {
+                    await videoEl.play();
+                    console.log('✅ Video playing with sound');
+                    resolve();
+                } catch (error) {
+                    console.error('Video play failed:', error);
+                    toast('Video play failed');
+                    resolve();
+                }
+            }
+        };
+
+        // If video is already ready, trigger the callback
+        if (videoEl.readyState >= 3) {
+            videoEl.oncanplay();
+        }
+    });
 }
 
     
