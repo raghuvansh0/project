@@ -669,7 +669,7 @@ function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
   
   // CRITICAL FIX: Proper texture settings to avoid WebGL errors
-  texture.flipY = false;
+  texture.flipY = true;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
