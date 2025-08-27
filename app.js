@@ -174,6 +174,7 @@ function setupMediaPlayers() {
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
 const xrWrap = document.getElementById('xrWrap');
 let audioCtx, mediaSource, masterGain, stereoPanner, lowShelf,highShelf, compressor;//audio global variables
+let delay,delayFeedback,reverb,reverbGain = false
 let audioReady=false;
 
 // Fixed XR toolbar with proper recenter
@@ -673,35 +674,59 @@ function buildAudioGraph(videoEl){
 
 audioCtx =  new (window.AudioContext || window.webkitAudioContext());
 
-// Create nodes
+// Sources & Create nodes
 mediaSource = audioCtx.createMediaElementSource(videoEl);
-stereoPanner = audioCtx.createStereoPanner();
+
+
+// EQ Tone shaping
 lowShelf = audioCtx.createBiquadFilter();
-highShelf = audioCtx.createBiquadFilter();
-compressor = audioCtx.createDynamicsCompressor();
-masterGain = audioCtx.createGain();
-// Tone shaping
 lowShelf.type = 'lowshelf';
 lowShelf.frequency.value = 120;
 lowShelf.gain.value=3;      //+3db
 
+highShelf = audioCtx.createBiquadFilter();
 highShelf.type='highshelf';
 highShelf.frequency.value=8000;
-highShelf.gain.value=1;     //+1db
+highShelf.gain.value=1.2;     //+1.2db
 
 //Gentle mastering
+compressor = audioCtx.createDynamicsCompressor();
 compressor.threshold.value=-18;
 compressor.knee.value=24;
 compressor.ratio.value=2.5;
 compressor.attack.value=0.003;
 compressor.release.value=0.25;
 
+// Immersive space
+delay = audioCtx.createDelay();
+delay.delayTime.value=0.045;   // ~30ms Haas/early reflections
+
+delayFeedback = audioCtx.createGain();
+delayFeedback.gain.value = 0.0;   // 0 in Comfort; >0 in Immersive
+delay.connect(delayFeedback);
+delayFeedback.connect(delay);     // feedback loop
+
+//reverb = audioCtx.createConvolver(); // optional IR (can be left empty)
+reverbGain = audioCtx.createGain();
+reverbGain.gain.value = 0.0;      // 0 in Comfort; >0 in Immersive
+
+stereoPanner = audioCtx.createStereoPanner();
+
+masterGain = audioCtx.createGain();
 masterGain.gain.value=1.0;  //overall output
+
 //Wire video -> tone -> comp->panner->gain->out
+// Wire graph:
+// media -> EQ -> comp -> (dry + FX) -> panner -> master -> out
 mediaSource.connect(lowShelf);
 lowShelf.connect(highShelf);
 highShelf.connect(compressor);
-compressor.connect(stereoPanner);
+compressor.connect(stereoPanner); //Dry Path always on
+compressor.connect(delay);
+delay.connect(stereoPanner);
+compressor.connect(reverbGain);
+reverbGain.connect(stereoPanner);
+
 stereoPanner.connect(masterGain);
 masterGain.connect(audioCtx.destination);
 
@@ -716,16 +741,31 @@ async function enableAudioforMode(modeConfig){
   }
   //Unmute video once we have a gesture
   if (videoEl) {
-    videoEl.muted = false;
+    videoEl.muted = false;  //we call this for user gesture
     videoEl.volume=1.0;
   }
-  // Comfort: center pan; Immersive: dynamic pan (we update each frame)
-  if (stereoPanner) {
-    stereoPanner.pan.value = (modeConfig.screenCurve===0) ? 0 : 0; //start centered
+  // Comfort (flat): clean, centered, no room
+  if (modeConfig.screenCurve === 0) {
+    masterGain.gain.value = 0.98;
+    lowShelf.gain.value=2.0;
+    highShelf.gain.value=0.6;
+    stereoPanner.pan.value = 0.0;   // fixed center
+    delayFeedback.gain.value = 0.0; // no echo
+    reverbGain.gain.value = 0.0;    // no reverb
   }
-  audioReady=true;
+  // Immersive (sphere): wider & roomier
+  else {
+    masterGain.gain.value = 1.25;   // tiny loudness lift
+    lowShelf.gain.value=4.0;
+    highShelf.gain.value=1.8;
+    stereoPanner.pan.value = 0.0;   // render loop will animate yaw → pan
+    delayFeedback.gain.value = 0.35; // subtle echo “size”
+    reverbGain.gain.value = 0.16;    // gentle ambience (if IR loaded, else soft smear)
+  }
+
+  audioReady = true;
   console.log('🔊 Audio enabled for', modeConfig.name);
-  // Small overlay to get user gesture for sound
+}
 
   function ensureUnmuteOverlay(){
     if(document.getElementById('unmuteOverlay')) return;
@@ -746,7 +786,7 @@ async function enableAudioforMode(modeConfig){
     });
     document.body.appendChild(btn);
   }
-}
+
 
 async function startXR() {
   console.log('🚀 Starting XR mode...');
@@ -791,7 +831,7 @@ async function startXR() {
       camera.getWorldDirection(dir);             // forward in world space
       const yaw = Math.atan2(dir.x, -dir.z);     // -Z is forward in your scene
       // Map ±90° to ±0.7 pan (keeps it comfortable)
-      const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.7));
+      const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.95));
       stereoPanner.pan.value = pan;
     }
   }
