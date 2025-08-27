@@ -641,6 +641,12 @@ function rebuildTheaterWithMode(mode) {
   
   // Reapply video texture if exists
   if (videoTex && screen) {
+    // Flat (plane with manually flipped UVs) => flipY=false
+    // Curved (sphere segment, BackSide)     => flipY=true
+    const cfg = COMFORT_MODES[currentMode];
+    texture.flipY = (cfg.screenCurve === 0) ? false : true;
+    videoTex.needsUpdate = true;
+    
     const side = newConfig.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
     const videoMaterial = new THREE.MeshBasicMaterial({ 
       map: videoTex, 
@@ -668,15 +674,15 @@ function rebuildTheaterWithMode(mode) {
 function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
   
-  // CRITICAL FIX: Different flipY for different screen types
+  
+  
+  
+  // Flat (plane with manually flipped UVs) => flipY=false
+  // Curved (sphere segment, BackSide)     => flipY=true
   const config = COMFORT_MODES[currentMode];
-  if (config.screenCurve === 0) {
-    // Flat screen (comfort mode) - don't flip, UVs are manually flipped in geometry
-    texture.flipY = false;
-  } else {
-    // Curved screen (immersive mode) - also don't flip for BackSide geometry
-    texture.flipY = false;
-  }
+  texture.flipY = (cfg.screenCurve === 0) ? false : true;
+  
+
   
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
