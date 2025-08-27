@@ -814,21 +814,21 @@ async function enableAudioforMode(modeConfig){
     // COMFORT MODE: Clean, intimate, focused sound
     console.log('Applying COMFORT audio profile');
     
-    masterGain.gain.setTargetAtTime(0.85, audioCtx.currentTime, 0.1);
+    masterGain.gain.setTargetAtTime(0.75, audioCtx.currentTime, 0.1);
     
     // Clean, natural EQ
-    lowShelf.gain.setTargetAtTime(1.5, audioCtx.currentTime, 0.1);      // Slight bass warmth
-    if (window.midRange) window.midRange.gain.setTargetAtTime(-0.5, audioCtx.currentTime, 0.1); // Reduce muddiness
-    highShelf.gain.setTargetAtTime(2, audioCtx.currentTime, 0.1);        // Clear highs
+    lowShelf.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);      // Slight bass warmth
+    if (window.midRange) window.midRange.gain.setTargetAtTime(-1.0, audioCtx.currentTime, 0.1); // Reduce muddiness
+    highShelf.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.1);        // Clear highs
     
     // Minimal spatial effects - stay centered
     stereoPanner.pan.value = 0.0;
-    if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.05, audioCtx.currentTime, 0.1); // Almost no widening
+    if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.00, audioCtx.currentTime, 0.1); // Almost no widening
     
     // No reverb or delay - intimate sound
     delayFeedback.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
     reverbGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
-    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.02, audioCtx.currentTime, 0.1); // Minimal enhancement
+    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1); // Minimal enhancement
     
   } else {
     // IMMERSIVE MODE: Full 3D spatial experience with rich acoustics
