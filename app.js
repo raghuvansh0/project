@@ -438,14 +438,14 @@ function buildTheaterScreen(mode = 'phone') {
     // use a sphere segment for IMMERSIVE mode
     const radius = config.screenDistance;
     const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
-    const thetaLength = THREE.MathUtils.degToRad(100); // vertical span (half dome)
+    const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
     
     screenGeo = new THREE.SphereGeometry(
       radius,
       128, 128,
-      Math.PI/2 - phiLength/2, // phiStart: center forward
+      0, // phiStart: start from front
       phiLength,               // phiLength
-      Math.PI/2 - thetaLength/2, // thetaStart: tilt vertical window
+      Math.PI/2 - thetaLength/2, // thetaStart: center vertically
       thetaLength              // thetaLength
     );
   
@@ -464,11 +464,11 @@ function buildTheaterScreen(mode = 'phone') {
   
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
   screen.position.set(...config.screenPosition);
-    // FIXED : Rotate curved screens 180 deg to face camera
-    if (config.screenCurve!==0) {
-        screen.rotation.y = Math.PI; // Rotate around X-axis to face camera
-        console.log("Rotated curved screen 180° to face camera");
-    }
+  // FIXED : Rotate curved screens to face camera properly
+  if (config.screenCurve !== 0) {
+    screen.rotation.y = Math.PI; // Rotate around Y-axis to face camera
+    console.log("Rotated curved screen 180° to face camera");
+  }
   
   scene.add(screen);
 
