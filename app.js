@@ -181,8 +181,7 @@ function enhanceXRToolbar() {
   `;
   
   modeSelector.innerHTML = `
-    <option value="phone">Comfort Mode</option>
-    <option value="tablet">Cinema Mode</option>  
+    <option value="phone">Comfort Mode</option> 
     <option value="desktop">Immersive Mode</option>
   `;
   
@@ -834,7 +833,6 @@ async function enableAudioforMode(modeConfig){
   } else {
     // IMMERSIVE MODE: Full 3D spatial experience with rich acoustics
     console.log('Applying IMMERSIVE audio profile');
-    
     masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);     // Louder for impact
     
     // Enhanced frequency response for immersion
@@ -846,8 +844,8 @@ async function enableAudioforMode(modeConfig){
     if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.1); // Wide soundstage
     
     // Rich environmental acoustics
-    delayFeedback.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.1);  // Spacious echo
-    reverbGain.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);     // Cathedral-like reverb
+    delayFeedback.gain.setTargetAtTime(0.10, audioCtx.currentTime, 0.1);  // Spacious echo
+    reverbGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.1);     // Cathedral-like reverb
     if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.1); // Rich harmonics
     
     // Longer delay for bigger space feeling
