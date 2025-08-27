@@ -669,68 +669,133 @@ function createVideoTexture(videoElement) {
 }
 
 // === Audio helpers (ADD) ===
+// === Enhanced Audio System ===
 function buildAudioGraph(videoEl){
   if (audioCtx) return; //already built
 
-audioCtx =  new (window.AudioContext || window.webkitAudioContext());
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  mediaSource = audioCtx.createMediaElementSource(videoEl);
 
-// Sources & Create nodes
-mediaSource = audioCtx.createMediaElementSource(videoEl);
+  // Enhanced EQ system - much more detailed
+  lowShelf = audioCtx.createBiquadFilter();
+  lowShelf.type = 'lowshelf';
+  lowShelf.frequency.value = 120;
+  lowShelf.gain.value = 3;
 
+  // Add mid-range control
+  const midRange = audioCtx.createBiquadFilter();
+  midRange.type = 'peaking';
+  midRange.frequency.value = 800;
+  midRange.Q.value = 1.2;
+  midRange.gain.value = 0;
 
-// EQ Tone shaping
-lowShelf = audioCtx.createBiquadFilter();
-lowShelf.type = 'lowshelf';
-lowShelf.frequency.value = 120;
-lowShelf.gain.value=3;      //+3db
+  highShelf = audioCtx.createBiquadFilter();
+  highShelf.type = 'highshelf';
+  highShelf.frequency.value = 8000;
+  highShelf.gain.value = 1.2;
 
-highShelf = audioCtx.createBiquadFilter();
-highShelf.type='highshelf';
-highShelf.frequency.value=8000;
-highShelf.gain.value=1.2;     //+1.2db
+  // Enhanced spatial processing
+  const stereoWidener = audioCtx.createDelay(0.05);
+  stereoWidener.delayTime.value = 0.003; // 3ms for widening
 
-//Gentle mastering
-compressor = audioCtx.createDynamicsCompressor();
-compressor.threshold.value=-18;
-compressor.knee.value=24;
-compressor.ratio.value=2.5;
-compressor.attack.value=0.003;
-compressor.release.value=0.25;
+  const widenerGain = audioCtx.createGain();
+  widenerGain.gain.value = 0.2; // Will be adjusted per mode
 
-// Immersive space
-delay = audioCtx.createDelay();
-delay.delayTime.value=0.045;   // ~30ms Haas/early reflections
+  // Advanced compressor settings
+  compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.value = -15;
+  compressor.knee.value = 12;
+  compressor.ratio.value = 3.5;
+  compressor.attack.value = 0.002;
+  compressor.release.value = 0.15;
 
-delayFeedback = audioCtx.createGain();
-delayFeedback.gain.value = 0.0;   // 0 in Comfort; >0 in Immersive
-delay.connect(delayFeedback);
-delayFeedback.connect(delay);     // feedback loop
+  // Immersive effects
+  delay = audioCtx.createDelay(0.3);
+  delay.delayTime.value = 0.08; // Longer delay for space
 
-//reverb = audioCtx.createConvolver(); // optional IR (can be left empty)
-reverbGain = audioCtx.createGain();
-reverbGain.gain.value = 0.0;      // 0 in Comfort; >0 in Immersive
+  delayFeedback = audioCtx.createGain();
+  delayFeedback.gain.value = 0.0; // Will be set per mode
 
-stereoPanner = audioCtx.createStereoPanner();
+  // Create actual convolution reverb
+  const convolver = audioCtx.createConvolver();
+  
+  // Create synthetic reverb impulse response
+  const reverbLength = audioCtx.sampleRate * 2.5; // 2.5 seconds
+  const reverbBuffer = audioCtx.createBuffer(2, reverbLength, audioCtx.sampleRate);
+  
+  for (let channel = 0; channel < 2; channel++) {
+    const channelData = reverbBuffer.getChannelData(channel);
+    for (let i = 0; i < reverbLength; i++) {
+      const t = i / audioCtx.sampleRate;
+      const decay = Math.exp(-t * 1.2); // Exponential decay
+      channelData[i] = (Math.random() * 2 - 1) * decay * 0.4;
+    }
+  }
+  convolver.buffer = reverbBuffer;
 
-masterGain = audioCtx.createGain();
-masterGain.gain.value=1.0;  //overall output
+  reverbGain = audioCtx.createGain();
+  reverbGain.gain.value = 0.0;
 
-//Wire video -> tone -> comp->panner->gain->out
-// Wire graph:
-// media -> EQ -> comp -> (dry + FX) -> panner -> master -> out
-mediaSource.connect(lowShelf);
-lowShelf.connect(highShelf);
-highShelf.connect(compressor);
-compressor.connect(stereoPanner); //Dry Path always on
-compressor.connect(delay);
-delay.connect(stereoPanner);
-compressor.connect(reverbGain);
-reverbGain.connect(stereoPanner);
+  stereoPanner = audioCtx.createStereoPanner();
+  
+  // Harmonic enhancer for presence
+  const enhancer = audioCtx.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const x = (i - 128) / 128;
+    curve[i] = x + 0.15 * x * x * x; // Subtle harmonic distortion
+  }
+  enhancer.curve = curve;
+  enhancer.oversample = '2x';
 
-stereoPanner.connect(masterGain);
-masterGain.connect(audioCtx.destination);
+  const enhancerGain = audioCtx.createGain();
+  enhancerGain.gain.value = 0.1; // Subtle enhancement
 
-console.log("✅ Audio graph built");
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 1.0;
+
+  // Wire the enhanced audio graph
+  mediaSource.connect(lowShelf);
+  lowShelf.connect(midRange);
+  midRange.connect(highShelf);
+  highShelf.connect(compressor);
+  
+  // Parallel processing: main path + effects
+  compressor.connect(stereoPanner); // Main dry path
+  
+  // Stereo widening
+  compressor.connect(stereoWidener);
+  stereoWidener.connect(widenerGain);
+  widenerGain.connect(stereoPanner);
+  
+  // Delay/echo path
+  compressor.connect(delay);
+  delay.connect(delayFeedback);
+  delayFeedback.connect(delay); // Feedback loop
+  delay.connect(stereoPanner);
+  
+  // Reverb path
+  compressor.connect(convolver);
+  convolver.connect(reverbGain);
+  reverbGain.connect(stereoPanner);
+  
+  // Harmonic enhancement
+  compressor.connect(enhancer);
+  enhancer.connect(enhancerGain);
+  enhancerGain.connect(stereoPanner);
+
+  stereoPanner.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+
+  // Store references for mode switching
+  window.midRange = midRange;
+  window.stereoWidener = stereoWidener;
+  window.widenerGain = widenerGain;
+  window.convolver = convolver;
+  window.enhancer = enhancer;
+  window.enhancerGain = enhancerGain;
+
+  console.log("Enhanced audio graph built with advanced processing");
 }
 
 async function enableAudioforMode(modeConfig){
@@ -744,27 +809,52 @@ async function enableAudioforMode(modeConfig){
     videoEl.muted = false;  //we call this for user gesture
     videoEl.volume=1.0;
   }
-  // Comfort (flat): clean, centered, no room
+  // DRAMATICALLY different audio profiles for each mode
   if (modeConfig.screenCurve === 0) {
-    masterGain.gain.value = 0.98;
-    lowShelf.gain.value=2.0;
-    highShelf.gain.value=0.6;
-    stereoPanner.pan.value = 0.0;   // fixed center
-    delayFeedback.gain.value = 0.0; // no echo
-    reverbGain.gain.value = 0.0;    // no reverb
-  }
-  // Immersive (sphere): wider & roomier
-  else {
-    masterGain.gain.value = 1.25;   // tiny loudness lift
-    lowShelf.gain.value=4.0;
-    highShelf.gain.value=1.8;
-    stereoPanner.pan.value = 0.0;   // render loop will animate yaw → pan
-    delayFeedback.gain.value = 0.35; // subtle echo “size”
-    reverbGain.gain.value = 0.16;    // gentle ambience (if IR loaded, else soft smear)
+    // COMFORT MODE: Clean, intimate, focused sound
+    console.log('Applying COMFORT audio profile');
+    
+    masterGain.gain.setTargetAtTime(0.85, audioCtx.currentTime, 0.1);
+    
+    // Clean, natural EQ
+    lowShelf.gain.setTargetAtTime(1.5, audioCtx.currentTime, 0.1);      // Slight bass warmth
+    if (window.midRange) window.midRange.gain.setTargetAtTime(-0.5, audioCtx.currentTime, 0.1); // Reduce muddiness
+    highShelf.gain.setTargetAtTime(2, audioCtx.currentTime, 0.1);        // Clear highs
+    
+    // Minimal spatial effects - stay centered
+    stereoPanner.pan.value = 0.0;
+    if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.05, audioCtx.currentTime, 0.1); // Almost no widening
+    
+    // No reverb or delay - intimate sound
+    delayFeedback.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
+    reverbGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
+    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.02, audioCtx.currentTime, 0.1); // Minimal enhancement
+    
+  } else {
+    // IMMERSIVE MODE: Full 3D spatial experience with rich acoustics
+    console.log('Applying IMMERSIVE audio profile');
+    
+    masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);     // Louder for impact
+    
+    // Enhanced frequency response for immersion
+    lowShelf.gain.setTargetAtTime(6, audioCtx.currentTime, 0.1);         // Deep, powerful bass
+    if (window.midRange) window.midRange.gain.setTargetAtTime(2, audioCtx.currentTime, 0.1);   // Present mids
+    highShelf.gain.setTargetAtTime(3.5, audioCtx.currentTime, 0.1);      // Sparkling highs
+    
+    // Full spatial processing
+    if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.1); // Wide soundstage
+    
+    // Rich environmental acoustics
+    delayFeedback.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);  // Spacious echo
+    reverbGain.gain.setTargetAtTime(0.45, audioCtx.currentTime, 0.1);     // Cathedral-like reverb
+    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.1); // Rich harmonics
+    
+    // Longer delay for bigger space feeling
+    delay.delayTime.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
   }
 
   audioReady = true;
-  console.log('🔊 Audio enabled for', modeConfig.name);
+  console.log('Enhanced audio enabled for', modeConfig.name, 'with dramatic profile differences');
 }
 
   function ensureUnmuteOverlay(){
@@ -819,22 +909,60 @@ async function startXR() {
     if (mwControls) mwControls.update();
   
     // === Audio panner update (ADD inside the render loop) ===
-    if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
-      const cfg = COMFORT_MODES[currentMode];
-    if (cfg.screenCurve === 0) {
-      // Comfort — fixed stereo center
-      stereoPanner.pan.value = 0;
-    } else {
-      // Immersive — subtle pan based on camera yaw
-      // Estimate yaw from camera forward vector
-      const dir = new THREE.Vector3();
-      camera.getWorldDirection(dir);             // forward in world space
-      const yaw = Math.atan2(dir.x, -dir.z);     // -Z is forward in your scene
-      // Map ±90° to ±0.7 pan (keeps it comfortable)
-      const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.95));
-      stereoPanner.pan.value = pan;
+    // === Enhanced spatial audio update ===
+if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
+  const cfg = COMFORT_MODES[currentMode];
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  const yaw = Math.atan2(dir.x, -dir.z);
+  
+  if (cfg.screenCurve === 0) {
+    // COMFORT MODE: Fixed center, no movement
+    stereoPanner.pan.value = 0;
+    
+    // Keep reverb and delay minimal
+    if (reverbGain) reverbGain.gain.value = 0;
+    if (delayFeedback) delayFeedback.gain.value = 0;
+    
+  } else if (cfg.screenCurve === 70) {
+    // CINEMA MODE: Gentle panning, moderate space
+    const pan = Math.max(-0.4, Math.min(0.4, (yaw / (Math.PI / 2)) * 0.25));
+    stereoPanner.pan.value = pan;
+    
+    // Distance-based reverb adjustment
+    const distance = camera.position.length();
+    const reverbLevel = Math.max(0.15, Math.min(0.35, 0.25 + distance * 0.02));
+    if (reverbGain) reverbGain.gain.value = reverbLevel;
+    
+  } else {
+    // IMMERSIVE MODE: Full 3D spatial experience
+    const pan = Math.max(-1, Math.min(1, (yaw / (Math.PI / 2)) * 0.85));
+    stereoPanner.pan.value = pan;
+    
+    // Dynamic acoustic space based on head movement
+    const distance = camera.position.length();
+    const velocity = Math.abs(yaw - (window.lastYaw || 0)) * 100;
+    window.lastYaw = yaw;
+    
+    // Reverb responds to movement and distance
+    const baseReverb = 0.35;
+    const movementReverb = Math.min(0.15, velocity * 0.3);
+    const distanceReverb = Math.max(0.1, Math.min(0.2, distance * 0.03));
+    const totalReverb = Math.min(0.6, baseReverb + movementReverb + distanceReverb);
+    
+    if (reverbGain) reverbGain.gain.setTargetAtTime(totalReverb, audioCtx.currentTime, 0.1);
+    
+    // Delay feedback responds to turning speed
+    const delayAmount = Math.max(0.25, Math.min(0.5, 0.35 + velocity * 0.2));
+    if (delayFeedback) delayFeedback.gain.setTargetAtTime(delayAmount, audioCtx.currentTime, 0.05);
+    
+    // High frequency filtering based on angle (simulates head shadow effect)
+    const hfAttenuation = 1.0 - Math.abs(pan) * 0.3;
+    if (window.highShelf) {
+      window.highShelf.gain.setTargetAtTime(3.5 * hfAttenuation, audioCtx.currentTime, 0.05);
     }
   }
+}
       
     // Force video texture update
     if (videoTex && videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
@@ -953,6 +1081,24 @@ async function attachVideoToScreen() {
     renderer.domElement.addEventListener('click', startVideo);
   }
 }
+
+// Optional: Audio debug logging
+function logAudioState(label) {
+  if (!audioCtx || !audioReady) return;
+  
+  console.group(`🔊 Audio Debug: ${label}`);
+  console.log('Master gain:', masterGain?.gain?.value?.toFixed(2));
+  console.log('Low shelf gain:', lowShelf?.gain?.value?.toFixed(2));
+  console.log('High shelf gain:', highShelf?.gain?.value?.toFixed(2));
+  console.log('Pan position:', stereoPanner?.pan?.value?.toFixed(2));
+  console.log('Reverb level:', reverbGain?.gain?.value?.toFixed(2));
+  console.log('Delay feedback:', delayFeedback?.gain?.value?.toFixed(2));
+  console.log('Widener gain:', window.widenerGain?.gain?.value?.toFixed(2));
+  console.groupEnd();
+}
+
+// Add this line to your mode switching to see the changes:
+// logAudioState('After mode switch to ' + currentMode);
 
 async function requestMotionPermission() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
