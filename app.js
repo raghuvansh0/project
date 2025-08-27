@@ -450,11 +450,11 @@ function buildTheaterScreen(mode = 'phone') {
   
   screen = new THREE.Mesh(screenGeo, placeholderMaterial);
   screen.position.set(...config.screenPosition);
-  // FIXED : Rotate curved screens 180 deg to face camera
-  if (config.screenCurve!==0) {
-    screen.rotation.x = Math.PI; // ✅ face the camera (-Z)
-    console.log("Rotated curved screen 180° to face camera");
-  }
+    // FIXED : Rotate curved screens 180 deg to face camera
+    if (config.screenCurve!==0) {
+        screen.rotation.x = Math.PI; // Rotate around X-axis to face camera
+        console.log("Rotated curved screen 180° to face camera");
+    }
   
   scene.add(screen);
 
