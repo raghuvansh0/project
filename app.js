@@ -508,7 +508,8 @@ function createMobileRenderer() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
 
-  const maxDPR = isMobile() ? 1.5 : 2;
+  const maxDPR = (currentMode === 'phone' || currentMode === 'tablet') ? 1.5 : 2;
+
   const pixelRatio = Math.min(window.devicePixelRatio, maxDPR);
   renderer.setPixelRatio(pixelRatio);
   renderer.shadowMap.enabled = false; // Keep disabled for performance
@@ -1092,10 +1093,6 @@ async function attachVideoToScreen(userGesture = false) {
         };
         // ALWAYS add the fallback listener (even when userGesture === true)
           renderer?.domElement.addEventListener('click', startVideo);
-      }
-        if (!userGesture) {
-          renderer.domElement.addEventListener('click', startVideo);
-        }
       }
     };
   
