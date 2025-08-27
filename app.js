@@ -1245,4 +1245,5 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   console.log('✅ App initialized successfully for ASUS ZenBook Duo');
-}); 
+});
+}
