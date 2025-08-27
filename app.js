@@ -452,7 +452,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    //screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
+    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
     console.log("Rotated curved screen 180° to face camera");
   }
   
