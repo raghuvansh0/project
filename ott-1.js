@@ -609,15 +609,12 @@ function buildScene() {
   console.log('✅ Scene built successfully');
 }
 
-// FIXED rebuild function
-function rebuildTheaterWithMode(mode) {
+/*function rebuildTheaterWithMode(mode) {
   console.log(`🔄 Rebuilding theater with ${mode} mode`);
   const newConfig = COMFORT_MODES[mode];
 
-  // Rebuild screen
   buildTheaterScreen(mode);
 
-  // Update camera and controls
   if (controls) {
     camera.position.set(...newConfig.cameraPosition);
     if (newConfig.screenCurve === 0) {
@@ -634,40 +631,126 @@ function rebuildTheaterWithMode(mode) {
     controls.update();
   }
 
-  // Reapply video texture if exists
   if (videoTex && screen) {
-    // Flat (plane + flipped UVs) => flipY=false
-    // Curved (sphere segment, BackSide) => flipY=true
-    videoTex.flipY = (newConfig.screenCurve === 0) ? false : true;
-    videoTex.needsUpdate = true;
+    //videoTex.flipY = (newConfig.screenCurve === 0) ? false : true;
+    //videoTex.needsUpdate = true;
 
     const side = newConfig.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
     const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTex, toneMapped: false, side });
     screen.material.dispose();
     screen.material = videoMaterial;
 
-    // Ensure audio profile matches new mode
     if (videoEl) {
       buildAudioGraph(videoEl);
       enableAudioforMode(newConfig);
     }
   }
 
-  // Update UI
   document.getElementById('currentMode').textContent = newConfig.name;
+  logPositions(`After Mode Switch to ${mode}`);
+}*/
+
+function rebuildTheaterWithMode(mode) {
+  console.log(`🔄 Rebuilding theater with ${mode} mode`);
+  const newConfig = COMFORT_MODES[mode];
+
+  // Rebuild the screen geometry/material shell
+  buildTheaterScreen(mode);
+
+  // Update camera + controls for the new mode
+  if (controls) {
+    camera.position.set(...newConfig.cameraPosition);
+    if (newConfig.screenCurve === 0) {
+      // Flat plane in front of camera
+      controls.target.set(...newConfig.screenPosition);
+      controls.minDistance = 1;
+      controls.maxDistance = 6;
+      controls.enableZoom = true;
+    } else {
+      // Inside a sphere segment; look slightly forward
+      controls.target.set(0, 1.6, -2);
+      controls.minDistance = 0.1;
+      controls.maxDistance = 1;
+      controls.enableZoom = false;
+    }
+    controls.update();
+  }
+
+  // Reapply the existing video texture with correct orientation per mode
+  if (videoTex && screen) {
+    if (newConfig.screenCurve === 0) {
+      // FLAT (plane with manually flipped UVs)
+      videoTex.flipY = false;
+      videoTex.wrapS = THREE.ClampToEdgeWrapping;
+      videoTex.wrapT = THREE.ClampToEdgeWrapping;
+      videoTex.repeat.x = 1;
+      videoTex.offset.x = 0;
+    } else {
+      // CURVED (inside a sphere segment using BackSide)
+      // Fix left–right mirroring by inverting U
+      videoTex.flipY = true;                       // correct vertical for sphere
+      videoTex.wrapS = THREE.RepeatWrapping;       // allow U inversion
+      videoTex.wrapT = THREE.ClampToEdgeWrapping;
+      videoTex.repeat.x = -1;                      // mirror horizontally
+      videoTex.offset.x = 1;                       // shift so it shows
+    }
+    videoTex.needsUpdate = true;
+
+    const side = newConfig.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
+    const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTex, toneMapped: false, side });
+    if (screen.material) screen.material.dispose();
+    screen.material = videoMaterial;
+
+    // Ensure audio profile matches the new mode
+    if (videoEl) {
+      buildAudioGraph(videoEl);
+      enableAudioforMode(newConfig);
+    }
+  }
+
+  // UI label
+  const label = document.getElementById('currentMode');
+  if (label) label.textContent = newConfig.name;
+
   logPositions(`After Mode Switch to ${mode}`);
 }
 
 
-// FIXED video texture creation - addresses WebGL format error
 function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
-  
-  
-  
-  
-  // Flat (plane with manually flipped UVs) => flipY=false
-  // Curved (sphere segment, BackSide)     => flipY=true
+  const cfg = COMFORT_MODES[currentMode];
+
+  if (cfg.screenCurve === 0) {
+    // FLAT plane (you already flipped UVs in the geometry)
+    texture.flipY = false;
+    texture.wrapS = THREE.ClampToEdgeWrapping; // default for flat
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.repeat.x = 1;
+    texture.offset.x = 0;
+  } else {
+    // CURVED sphere segment viewed from the inside (BackSide):
+    // - Keep the default vertical orientation
+    // - Flip horizontally by inverting U
+    texture.flipY = true;                         // vertical correct for sphere
+    texture.wrapS = THREE.RepeatWrapping;        // allow U inversion
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.repeat.x = -1;                        // mirror horizontally
+    texture.offset.x = 1;                         // shift to keep image visible
+  }
+
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  console.log(`🎞 videoTex -> mode=${cfg.name}, flipY=${texture.flipY}, repeat.x=${texture.repeat.x}, offset.x=${texture.offset.x}`);
+  return texture;
+} 
+
+
+
+/*function createVideoTexture(videoElement) {
+  const texture = new THREE.VideoTexture(videoElement);
   const config = COMFORT_MODES[currentMode];
   texture.flipY = (config.screenCurve === 0) ? false : true;  
   texture.minFilter = THREE.LinearFilter;
@@ -679,7 +762,8 @@ function createVideoTexture(videoElement) {
   
   console.log(`✅ Created video texture for ${config.name} mode (flipY: ${texture.flipY})`);
   return texture;
-}
+} */
+
 
 // === Audio helpers (ADD) ===
 // === Enhanced Audio System ===
