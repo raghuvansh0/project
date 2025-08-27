@@ -22,7 +22,7 @@ const COMFORT_MODES = {
   },
     desktop: {
         screenDistance: 3.0,    // Adjusted for a narrower screen
-        screenCurve: 100,       // Slightly less curve for immersion
+        screenCurve: 120,       // Slightly less curve for immersion
     fovMin: 65,
     fovMax:85,
     fov:78,
@@ -83,21 +83,19 @@ function isTabletSizedTouch() {
   return navigator.maxTouchPoints >= 1 && sw > 800 && sw <= 1200;
 }
 
-function isDesktopOS() {
-  return /(Win|Mac|Linux)/i.test(navigator.platform || '') || /X11|CrOS/i.test(navigator.userAgent);
-}
+//function isDesktopOS() {
+//  return /(Win|Mac|Linux)/i.test(navigator.platform || '') || /X11|CrOS/i.test(navigator.userAgent);
+//}
 
 function detectBestMode() {
-  // Manual override first: ?mode=phone|tablet|desktop
+  
   const override = new URLSearchParams(location.search).get('mode');
   if (override && ['phone','tablet','desktop'].includes(override)) {
     console.log('Using manual override mode:', override);
     return override;
   }
-
-  // Touch devices with small/medium screens count as phone/tablet.
   if (isSmallTouch()) return 'phone';
-  if (isTabletSizedTouch()) return 'tablet';
+  if (isTabletSizedTouch()) return 'desktop';  //force it to be desktop now so that it works
 
   // Everything else (including touch laptops) = desktop
   return 'desktop';
@@ -1094,7 +1092,8 @@ async function attachVideoToScreen(userGesture = false) {
         // ALWAYS add the fallback listener (even when userGesture === true)
           renderer?.domElement.addEventListener('click', startVideo);
       }
-    };
+    }
+    
   
     // Set/refresh source at attach-time (dataset may have changed)
     const heroEl = document.getElementById('hero');
@@ -1116,6 +1115,7 @@ async function attachVideoToScreen(userGesture = false) {
 
     videoEl.load(); // ensure readiness after setting src
   }
+}
 
     
 
@@ -1206,7 +1206,7 @@ async function startMagicWindow(userGesture=false) {
 }
 
 // Main initialization
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
   console.log('🎯 App initializing...');
   
   // Setup enhanced media players
@@ -1244,6 +1244,5 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Using custom video source:', qs);
   }
   
-  console.log('✅ App initialized successfully for ASUS ZenBook Duo');
-});
-}
+  console.log(`✅ App initialized successfully for ${detectBestMode()}`);
+  });
