@@ -12,7 +12,7 @@ const YT_ID = 'JVAZGhSdczM';
 // ASUS ZenBook Duo optimized comfort modes
 const COMFORT_MODES = {
   phone: {
-    screenDistance: 2.5,
+    screenDistance: 2.5,    
     screenCurve: 0,         // Flat screen
     fov: 70,                // Comfortable for laptop screen
     yawOnly: true,
@@ -22,10 +22,10 @@ const COMFORT_MODES = {
   },
   desktop: {
     screenDistance: 4.0,    // Optimized for laptop screen size
-    screenCurve: 160,       // Full wrap-around for immersion
+    screenCurve: 130,       // Full wrap-around for immersion
     fovMin: 65,
     fovMax:85,
-    fov:82,
+    fov:78,
     yawOnly: false,
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
@@ -169,6 +169,7 @@ const xrWrap = document.getElementById('xrWrap');
 let audioCtx, mediaSource, masterGain, stereoPanner, lowShelf,highShelf, compressor;//audio global variables
 let delay,delayFeedback,reverb,reverbGain = false
 let audioReady=false;
+let prevPan=0;
 
 // Fixed XR toolbar with proper recenter
 function enhanceXRToolbar() {
@@ -428,7 +429,7 @@ function buildTheaterScreen(mode = 'phone') {
     screenGeo = new THREE.SphereGeometry(
       radius,
       128, 128,
-      Math.PI/2 - phiLength/2, // phiStart: center forward
+      3*Math.PI/2 - phiLength/2, // phiStart: center forward 3* added now
       phiLength,               // phiLength
       Math.PI/2 - thetaLength/2, // thetaStart: tilt vertical window
       thetaLength              // thetaLength
@@ -451,7 +452,7 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
+    //screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
     console.log("Rotated curved screen 180° to face camera");
   }
   
@@ -692,7 +693,7 @@ function buildAudioGraph(videoEl){
   stereoWidener.delayTime.value = 0.003; // 3ms for widening
 
   const widenerGain = audioCtx.createGain();
-  widenerGain.gain.value = 0.2; // Will be adjusted per mode
+  widenerGain.gain.value = 0.15; // Will be adjusted per mode
 
   // Advanced compressor settings
   compressor = audioCtx.createDynamicsCompressor();
@@ -704,7 +705,7 @@ function buildAudioGraph(videoEl){
 
   // Immersive effects
   delay = audioCtx.createDelay(0.3);
-  delay.delayTime.value = 0.08; // Longer delay for space
+  delay.delayTime.value = 0.0028; // Longer delay for space was 0.08 too long->echoey
 
   delayFeedback = audioCtx.createGain();
   delayFeedback.gain.value = 0.0; // Will be set per mode
@@ -815,12 +816,12 @@ async function enableAudioforMode(modeConfig){
     // COMFORT MODE: Clean, intimate, focused sound
     console.log('Applying COMFORT audio profile');
     
-    masterGain.gain.setTargetAtTime(0.75, audioCtx.currentTime, 0.1);
+    masterGain.gain.setTargetAtTime(0.85, audioCtx.currentTime, 0.1);
     
     // Clean, natural EQ
-    lowShelf.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);      // Slight bass warmth
+    lowShelf.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);      // Slight bass warmth
     if (window.midRange) window.midRange.gain.setTargetAtTime(-1.0, audioCtx.currentTime, 0.1); // Reduce muddiness
-    highShelf.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.1);        // Clear highs
+    highShelf.gain.setTargetAtTime(0.6, audioCtx.currentTime, 0.1);        // Clear highs
     
     // Minimal spatial effects - stay centered
     stereoPanner.pan.value = 0.0;
@@ -836,7 +837,7 @@ async function enableAudioforMode(modeConfig){
   } else {
     // IMMERSIVE MODE: Full 3D spatial experience with rich acoustics
     console.log('Applying IMMERSIVE audio profile');
-    masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);     // Louder for impact
+    masterGain.gain.setTargetAtTime(1.15, audioCtx.currentTime, 0.1);     // Louder for impact
     
     // Enhanced frequency response for immersion
     lowShelf.gain.setTargetAtTime(6, audioCtx.currentTime, 0.1);         // Deep, powerful bass
