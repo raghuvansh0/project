@@ -612,63 +612,52 @@ function buildScene() {
 // FIXED rebuild function
 function rebuildTheaterWithMode(mode) {
   console.log(`🔄 Rebuilding theater with ${mode} mode`);
-  
   const newConfig = COMFORT_MODES[mode];
-  
+
   // Rebuild screen
   buildTheaterScreen(mode);
-  
-  // Update camera and controls positions
+
+  // Update camera and controls
   if (controls) {
     camera.position.set(...newConfig.cameraPosition);
-    
     if (newConfig.screenCurve === 0) {
-      // Flat screen controls
       controls.target.set(...newConfig.screenPosition);
       controls.minDistance = 1;
       controls.maxDistance = 6;
       controls.enableZoom = true;
     } else {
-      // Curved screen controls
-      controls.target.set(0, 1.6, -2);  // ✅ critical for Immersive
+      controls.target.set(0, 1.6, -2); // look forward for immersive
       controls.minDistance = 0.1;
       controls.maxDistance = 1;
       controls.enableZoom = false;
     }
-    
     controls.update();
   }
-  
+
   // Reapply video texture if exists
   if (videoTex && screen) {
-    // Flat (plane with manually flipped UVs) => flipY=false
-    // Curved (sphere segment, BackSide)     => flipY=true
-    const cfg = COMFORT_MODES[currentMode];
-    texture.flipY = (cfg.screenCurve === 0) ? false : true;
+    // Flat (plane + flipped UVs) => flipY=false
+    // Curved (sphere segment, BackSide) => flipY=true
+    videoTex.flipY = (newConfig.screenCurve === 0) ? false : true;
     videoTex.needsUpdate = true;
-    
+
     const side = newConfig.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
-    const videoMaterial = new THREE.MeshBasicMaterial({ 
-      map: videoTex, 
-      toneMapped: false, 
-      side: side
-    });
+    const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTex, toneMapped: false, side });
     screen.material.dispose();
     screen.material = videoMaterial;
-    // ✅ ensure the recycled texture pushes a fresh frame
-    if (videoTex) videoTex.needsUpdate = true;
-    //Ensure audio context active & set pan mode correctly after switch
-    if (videoEl){
+
+    // Ensure audio profile matches new mode
+    if (videoEl) {
       buildAudioGraph(videoEl);
-      enableAudioforMode(COMFORT_MODES[mode]);
+      enableAudioforMode(newConfig);
     }
   }
-  
+
   // Update UI
   document.getElementById('currentMode').textContent = newConfig.name;
-  
   logPositions(`After Mode Switch to ${mode}`);
 }
+
 
 // FIXED video texture creation - addresses WebGL format error
 function createVideoTexture(videoElement) {
