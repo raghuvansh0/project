@@ -438,7 +438,7 @@ function buildTheaterScreen(mode = 'phone') {
     // use a sphere segment for IMMERSIVE mode
     const radius = config.screenDistance;
     const phiLength = THREE.MathUtils.degToRad(config.screenCurve); // horizontal span
-    const thetaLength = THREE.MathUtils.degToRad(90); // vertical span (half dome)
+    const thetaLength = THREE.MathUtils.degToRad(100); // vertical span (half dome)
     
     screenGeo = new THREE.SphereGeometry(
       radius,
@@ -503,7 +503,7 @@ function createMobileRenderer() {
   const renderer = new THREE.WebGLRenderer(options);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
-  
+
   const maxDPR = isMobile() ? 1.5 : 2;
   const pixelRatio = Math.min(window.devicePixelRatio, maxDPR);
   renderer.setPixelRatio(pixelRatio);
@@ -721,7 +721,7 @@ function buildAudioGraph(videoEl){
 
   // Immersive effects
   delay = audioCtx.createDelay(0.3);
-  delay.delayTime.value = 0.0028; // Longer delay for space was 0.08 too long->echoey
+  delay.delayTime.value = 0.028; // Longer delay for space was 0.08 too long->echoey
 
   delayFeedback = audioCtx.createGain();
   delayFeedback.gain.value = 0.0; // Will be set per mode
@@ -898,7 +898,7 @@ async function enableAudioforMode(modeConfig){
   }
 
 
-async function startXR() {
+async function startXR(userGesture=false) {
   console.log('🚀 Starting XR mode...');
   
   if (!renderer) {
@@ -909,7 +909,7 @@ async function startXR() {
   xrWrap.style.display = 'block';
   console.log('XR wrapper displayed');
 
-  await attachVideoToScreen();
+  await attachVideoToScreen(userGesture);
 
   // Add VR button for headset users
   if (!document.getElementById('vrbtn')) {
@@ -999,8 +999,9 @@ if (audioReady && stereoPanner && COMFORT_MODES[currentMode]) {
 }
 
 // FIXED video attachment with proper error handling
-async function attachVideoToScreen() {
+async function attachVideoToScreen(userGesture=false) {
   console.log('🎬 Attaching video to screen...');
+  
   
   if (!screen) {
     console.error("No screen found to attach video to!");
@@ -1082,22 +1083,50 @@ async function attachVideoToScreen() {
     console.warn('Video autoplay failed:', error.message);
     toast('Click screen to start video with sound');
         // One-click start with audio
-        const startVideo = async () => {
-        renderer.domElement.removeEventListener('click', startVideo);
-        try {
-         await videoEl.play(); // user gesture allows sound
-         console.log('✅ Video started after user interaction');
-         buildAudioGraph(videoEl);
-         await enableAudioforMode(COMFORT_MODES[currentMode]);
-         const btn = document.getElementById('unmuteOverlay');
-         if (btn) btn.remove();
-          toast('Video playing with sound');
-        } catch (e) {
-        console.error('Video play failed:', e);
-      }
-    };
-    renderer.domElement.addEventListener('click', startVideo);
+        // >>> REPLACE this whole try/catch block <<<
+try {
+  if (userGesture) {
+    // We have a valid gesture: start with sound ON
+    if (!audioCtx) buildAudioGraph(videoEl);
+    await enableAudioforMode(COMFORT_MODES[currentMode]);
+
+    videoEl.muted = false;
+    videoEl.volume = 1.0;
+
+    await videoEl.play();
+    console.log('✅ Video playing with sound from user gesture');
+    const btn = document.getElementById('unmuteOverlay');
+    if (btn) btn.remove();
+  } else {
+    // No gesture: attempt muted autoplay, fall back to overlay
+    videoEl.muted = true;
+    await videoEl.play();
+    console.log('✅ Video playing automatically (muted)');
   }
+} catch (error) {
+  console.warn('Video autoplay failed:', error.message);
+  toast('Click screen to start video with sound');
+
+  // Fallback overlay path
+  const startVideo = async () => {
+    renderer.domElement.removeEventListener('click', startVideo);
+    try {
+      if (!audioCtx) buildAudioGraph(videoEl);
+      await enableAudioforMode(COMFORT_MODES[currentMode]);
+      videoEl.muted = false;
+      videoEl.volume = 1.0;
+      await videoEl.play();
+      const btn = document.getElementById('unmuteOverlay');
+      if (btn) btn.remove();
+      toast('Video playing with sound');
+    } catch (e) {
+      console.error('Video play failed:', e);
+    }
+  };
+  ensureUnmuteOverlay();
+  renderer.domElement.addEventListener('click', startVideo);
+}
+
 }
 
 // Optional: Audio debug logging
@@ -1133,12 +1162,12 @@ async function requestMotionPermission() {
   return true;
 }
 
-async function startMagicWindow() {
+async function startMagicWindow(userGesture=false) {
   console.log('📱 Starting Magic Window mode...');
   
   if (!renderer) buildScene();
   xrWrap.style.display = 'block';
-  await attachVideoToScreen();
+  await attachVideoToScreen(userGesture);
 
   // Dispose orbit controls for mobile
   if (controls) {
@@ -1194,18 +1223,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Because this click is a user gesture, unlock audio up-front
     if (videoEl) {
-      buildAudioGraph(videoEl);
+      videoEl.muted=false;
+      videoEl.volume=1.0;
+      /*buildAudioGraph(videoEl);
       await enableAudioforMode(COMFORT_MODES[currentMode]);
       videoEl.muted = false;
-      videoEl.volume = 1.0;
+      videoEl.volume = 1.0;*/
     }
 
     if (isMobile() || isTablet()) {
       // Magic-window (device-orientation) on handhelds
-      await startMagicWindow();
+      await startMagicWindow(true);  //pass gesture flag
     } else {
       // Desktop XR path on laptops/desktops
-      await startXR();
+      await startXR(true);
     }
   } catch (error) {
     console.error('Start failed:', error);
@@ -1223,3 +1254,4 @@ document.addEventListener('DOMContentLoaded', function() {
   
   console.log('✅ App initialized successfully for ASUS ZenBook Duo');
 }); 
+
