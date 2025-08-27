@@ -470,7 +470,7 @@ function buildTheaterScreen(mode = 'phone') {
     // flat screen can be moved in front of camera
     screen.position.set(...config.screenPosition);
   } else {
-    screen.rotation.x = Math.PI;
+    screen.rotation.y = Math.PI;
     // curved screen must stay centered on origin so camera is inside it
     //screen.position.set(0, 0, 0);
   }
@@ -669,8 +669,16 @@ function rebuildTheaterWithMode(mode) {
 function createVideoTexture(videoElement) {
   const texture = new THREE.VideoTexture(videoElement);
   
-  // CRITICAL FIX: Proper texture settings to avoid WebGL errors
-  texture.flipY = true; //changed this now
+  // CRITICAL FIX: Different flipY for different screen types
+  const config = COMFORT_MODES[currentMode];
+  if (config.screenCurve === 0) {
+    // Flat screen (comfort mode) - don't flip, UVs are manually flipped in geometry
+    texture.flipY = false;
+  } else {
+    // Curved screen (immersive mode) - flip texture for proper orientation inside sphere
+    texture.flipY = true;
+  }
+  
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -678,7 +686,7 @@ function createVideoTexture(videoElement) {
   texture.generateMipmaps = false;
   texture.colorSpace = THREE.SRGBColorSpace;
   
-  console.log('✅ Created video texture with fixed format settings');
+  console.log(`✅ Created video texture for ${config.name} mode (flipY: ${texture.flipY})`);
   return texture;
 }
 
@@ -1014,17 +1022,6 @@ async function attachVideoToScreen(userGesture = false) {
 
         // Safe defaults for NPOT video
         videoTex.needsUpdate = true;
-        
-        // CRITICAL FIX: Different flipY for different screen types
-        const cfg = COMFORT_MODES[currentMode];
-        if (cfg.screenCurve === 0) {
-          // Flat screen (comfort mode) - keep flipY false, UVs are manually flipped
-          videoTex.flipY = false;
-        } else {
-          // Curved screen (immersive mode) - use flipY true for proper orientation
-          videoTex.flipY = true;
-        }
-        
         videoTex.colorSpace = (THREE.SRGBColorSpace || THREE.sRGBEncoding);
         videoTex.minFilter = THREE.LinearFilter;
         videoTex.magFilter = THREE.LinearFilter;
@@ -1032,6 +1029,7 @@ async function attachVideoToScreen(userGesture = false) {
         videoTex.wrapS = videoTex.wrapT = THREE.ClampToEdgeWrapping;
 
         // Apply to the current screen
+        const cfg = COMFORT_MODES[currentMode];
         const side = (cfg.screenCurve === 0) ? THREE.FrontSide : THREE.BackSide;
 
         const mat = new THREE.MeshBasicMaterial({
