@@ -20,15 +20,6 @@ const COMFORT_MODES = {
     cameraPosition: [0, 1.6, 0],      // Camera at center
     screenPosition: [0, 1.6, -2.5]     // Screen in front
   },
-  tablet: {
-    screenDistance: 3.5,    // Curved screen radius
-    screenCurve: 70,        // Good curve for laptop viewing
-    fov: 85,
-    yawOnly: false,
-    name: 'Cinema',
-    cameraPosition: [0, 1.6, 0],      // Camera at center of curve
-    screenPosition: [0, 1.6, 0]       // Screen curves around camera
-  },
   desktop: {
     screenDistance: 5.0,    // Optimized for laptop screen size
     screenCurve: 110,       // Full wrap-around for immersion
