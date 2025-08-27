@@ -948,7 +948,6 @@ async function startXR(userGesture = false) {
   }
 }
 
-// FIXED: attach video + build texture + one-tap audio (gesture-aware)
 async function attachVideoToScreen(userGesture = false) {
   console.log('🎬 Attaching video to screen…');
 
@@ -1013,21 +1012,20 @@ async function attachVideoToScreen(userGesture = false) {
           side
         });
 
-        //if (screen.material) screen.material.dispose();
+        if (screen.material) screen.material.dispose();
         screen.material = mat;
         console.log('✅ Video texture applied to screen');
-      
 
-        // ADD THIS HERE - AFTER creating the texture!
-          videoTex.needsUpdate = true;
-          
-          // Force an immediate render to show first frame
-          if (renderer && scene && camera) {
-            renderer.render(scene, camera);
-          }
+        // Force update after creating the texture
+        videoTex.needsUpdate = true;
         
+        // Force an immediate render to show first frame
+        if (renderer && scene && camera) {
+          renderer.render(scene, camera);
+        }
+      }
 
-      // 2) Ensure audio graph exists
+      // Ensure audio graph exists
       if (!audioCtx) {
         try {
           buildAudioGraph(videoEl);
@@ -1036,7 +1034,7 @@ async function attachVideoToScreen(userGesture = false) {
         }
       }
 
-      // 3) Start playback
+      // Start playback
       try {
         if (userGesture) {
           // One-tap path: enable profile, unmute, play with sound
@@ -1081,7 +1079,7 @@ async function attachVideoToScreen(userGesture = false) {
       }
     };
 
-    // 4) Set/refresh source at attach-time (dataset may have changed)
+    // Set/refresh source at attach-time (dataset may have changed)
     const heroEl = document.getElementById('hero');
     const src =
       (heroEl && heroEl.dataset && heroEl.dataset.mp4) ? heroEl.dataset.mp4 :
@@ -1104,9 +1102,8 @@ async function attachVideoToScreen(userGesture = false) {
 
   // Nothing else needed here — playback starts inside oncanplay()
 }
-
     
-// Optional: Audio debug logging
+
 function logAudioState(label) {
   if (!audioCtx || !audioReady) return;
   
