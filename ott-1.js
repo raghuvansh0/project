@@ -675,8 +675,8 @@ function createVideoTexture(videoElement) {
     // Flat screen (comfort mode) - don't flip, UVs are manually flipped in geometry
     texture.flipY = false;
   } else {
-    // Curved screen (immersive mode) - flip texture for proper orientation inside sphere
-    texture.flipY = true;
+    // Curved screen (immersive mode) - also don't flip for BackSide geometry
+    texture.flipY = false;
   }
   
   texture.minFilter = THREE.LinearFilter;
