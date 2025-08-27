@@ -1078,7 +1078,7 @@ async function attachVideoToScreen(userGesture = false) {
         }
       }
     };
-  }
+  
     // Set/refresh source at attach-time (dataset may have changed)
     const heroEl = document.getElementById('hero');
     const src =
@@ -1099,6 +1099,7 @@ async function attachVideoToScreen(userGesture = false) {
 
     videoEl.load(); // ensure readiness after setting src
   }
+}
     
 
 function logAudioState(label) {
