@@ -680,10 +680,7 @@ function createVideoTexture(videoElement) {
   // Flat (plane with manually flipped UVs) => flipY=false
   // Curved (sphere segment, BackSide)     => flipY=true
   const config = COMFORT_MODES[currentMode];
-  texture.flipY = (cfg.screenCurve === 0) ? false : true;
-  
-
-  
+  texture.flipY = (config.screenCurve === 0) ? false : true;  
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
