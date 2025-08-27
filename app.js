@@ -23,7 +23,9 @@ const COMFORT_MODES = {
   desktop: {
     screenDistance: 5.0,    // Optimized for laptop screen size
     screenCurve: 110,       // Full wrap-around for immersion
-    fov: 75,
+    fovMin: 65,
+    fovMax:85,
+    fov:75,
     yawOnly: false,
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      // Camera at center
@@ -425,7 +427,7 @@ function buildTheaterScreen(mode = 'phone') {
     
     screenGeo = new THREE.SphereGeometry(
       radius,
-      64, 64,
+      128, 128,
       Math.PI/2 - phiLength/2, // phiStart: center forward
       phiLength,               // phiLength
       Math.PI/2 - thetaLength/2, // thetaStart: tilt vertical window
@@ -449,8 +451,15 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens 180 deg to face camera
   if (config.screenCurve!==0) {
-    screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
+    //screen.rotation.y = Math.PI; // ✅ face the camera (-Z)
+    // Fix UV coordinates for sphere just like you do for plane
+    const uvAttr = screenGeo.attributes.uv;
+    for (let i=0; i< uvAttr.array.length; i+=2){
+      uvAttr.array[i+1] = 1 - uvAttr.array[i+1]; // Flip Y
+    }
+    uvAttr.needsUpdate=true;  
     console.log("Rotated curved screen 180° to face camera");
+    console.log('Fixed sphere UV coordinates for proper video orientation');
   }
   scene.add(screen);
 
