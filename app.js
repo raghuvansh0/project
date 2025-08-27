@@ -844,8 +844,8 @@ async function enableAudioforMode(modeConfig){
     if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.1); // Wide soundstage
     
     // Rich environmental acoustics
-    delayFeedback.gain.setTargetAtTime(0.10, audioCtx.currentTime, 0.1);  // Spacious echo
-    reverbGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.1);     // Cathedral-like reverb
+    delayFeedback.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.1);  // Spacious echo
+    reverbGain.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);     // Cathedral-like reverb
     if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.1); // Rich harmonics
     
     // Longer delay for bigger space feeling
