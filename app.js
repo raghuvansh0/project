@@ -1060,27 +1060,7 @@ async function attachVideoToScreen() {
     }
 }
 
-    // Overlay fallback for non-gesture path
-    const startVideo = async () => {
-      renderer.domElement.removeEventListener('click', startVideo);
-      try {
-        if (!audioCtx) buildAudioGraph(videoEl);
-        await enableAudioforMode(COMFORT_MODES[currentMode]);
-        videoEl.muted = false;
-        videoEl.volume = 1.0;
-        await videoEl.play();
-        const btn = document.getElementById('unmuteOverlay');
-        if (btn) btn.remove();
-        toast('Video playing with sound');
-      } catch (e) {
-        console.error('Video play failed:', e);
-      }
-    };
-    ensureUnmuteOverlay();
-    renderer.domElement.addEventListener('click', startVideo);
-  }
-}
-
+    
 // Optional: Audio debug logging
 function logAudioState(label) {
   if (!audioCtx || !audioReady) return;
@@ -1170,21 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   try {
-  /*  
-    // Build scene once here so attachVideoToScreen has somewhere to put the texture
-    if (!renderer) buildScene();
-
-    // Because this click is a user gesture, unlock audio up-front
-    if (videoEl) {
-      videoEl.muted=false;
-      videoEl.volume=1.0;
-      /*buildAudioGraph(videoEl);
-      await enableAudioforMode(COMFORT_MODES[currentMode]);
-      videoEl.muted = false;
-      videoEl.volume = 1.0;
-      */
-
-    if (isMobile() || isTablet()) {
+     if (isMobile() || isTablet()) {
       // Magic-window (device-orientation) on handhelds
       await startMagicWindow();  
     } else {
