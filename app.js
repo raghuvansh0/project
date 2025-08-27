@@ -1078,7 +1078,7 @@ async function attachVideoToScreen(userGesture = false) {
         }
       }
     };
-
+  }
     // Set/refresh source at attach-time (dataset may have changed)
     const heroEl = document.getElementById('hero');
     const src =
