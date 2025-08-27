@@ -768,11 +768,18 @@ function buildAudioGraph(videoEl){
   stereoWidener.connect(widenerGain);
   widenerGain.connect(stereoPanner);
   
+  // Add delay mix control for bypassing delay completely
+  const delayMix = audioCtx.createGain();
+  delayMix.gain.value = 0.0; //Start with no delay
+  // Store reference for mode switching  
+  window.delayMix = delayMix;
+  
   // Delay/echo path
   compressor.connect(delay);
   delay.connect(delayFeedback);
   delayFeedback.connect(delay); // Feedback loop
-  delay.connect(stereoPanner);
+  delay.connect(delayMix);
+  delayMix.connect(stereoPanner);
   
   // Reverb path
   compressor.connect(convolver);
@@ -811,6 +818,7 @@ async function enableAudioforMode(modeConfig){
   }
   // DRAMATICALLY different audio profiles for each mode
   if (modeConfig.screenCurve === 0) {
+
     // COMFORT MODE: Clean, intimate, focused sound
     console.log('Applying COMFORT audio profile');
     
@@ -825,10 +833,12 @@ async function enableAudioforMode(modeConfig){
     stereoPanner.pan.value = 0.0;
     if (window.widenerGain) window.widenerGain.gain.setTargetAtTime(0.00, audioCtx.currentTime, 0.1); // Almost no widening
     
+    
     // No reverb or delay - intimate sound
     delayFeedback.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
     reverbGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
-    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1); // Minimal enhancement
+    if (window.delayMix) window.delayMix.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1); // Completely bypass delay
+    if (window.enhancerGain) window.enhancerGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1); // No enhancement
     
   } else {
     // IMMERSIVE MODE: Full 3D spatial experience with rich acoustics
@@ -851,6 +861,7 @@ async function enableAudioforMode(modeConfig){
     
     // Longer delay for bigger space feeling
     delay.delayTime.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
+    if (window.delayMix) window.delayMix.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.1); // Enable delay
   }
 
   audioReady = true;
