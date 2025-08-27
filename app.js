@@ -443,7 +443,7 @@ function buildTheaterScreen(mode = 'phone') {
     screenGeo = new THREE.SphereGeometry(
       radius,
       128, 128,
-      Math.PI/2 - phiLength/2, // phiStart: center forward  <-- CORRECT
+      3*Math.PI/2 - phiLength/2, // phiStart: center forward  <-- CORRECT
       phiLength,               // phiLength
       Math.PI/2 - thetaLength/2, // thetaStart: center vertically
       thetaLength              // thetaLength
@@ -466,8 +466,8 @@ function buildTheaterScreen(mode = 'phone') {
   screen.position.set(...config.screenPosition);
   // FIXED : Rotate curved screens to face camera properly
   if (config.screenCurve !== 0) {
-    screen.rotation.y = Math.PI; // Rotate around Y-axis to face camera
-    console.log("Rotated curved screen 180° to face camera");
+    //screen.rotation.y = Math.PI; // Rotate around Y-axis to face camera
+    //console.log("Rotated curved screen 180° to face camera");
   }
   
   scene.add(screen);
