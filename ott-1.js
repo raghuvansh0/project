@@ -62,17 +62,6 @@ function logPositions(label) {
   console.groupEnd();
 }
 
-/* NOT USED ANYWHERE NOW -- ASKING BROWSER WHETHER XR SUPPORTED IF SO BROWSER RETURNS TRUE OR RETURNS FALSE
-async function xrSupported() {
-  if (!('xr' in navigator)) return false;
-  try {
-    return await navigator.xr.isSessionSupported('immersive-vr');
-  } catch {
-    return false;
-  }
-} */
-
-
  // -------------------- CHECK --------------------- 
 function isSmallTouch() {
   const sw = Math.min(window.screen.width, window.screen.height);
@@ -100,82 +89,7 @@ function detectBestMode() {
 }
 
 
-// Enhanced Media Player Setup
-function setupMediaPlayers() {
-  const ov2d = document.getElementById('ov2d');
-  //const v2d = document.getElementById('v2d');
-  
-  const controlPanel = document.createElement('div');
-  controlPanel.id = 'theaterControls';
-  controlPanel.style.cssText = `
-    position: fixed; bottom: 80px; right: 20px; z-index: 999;
-    background: rgba(10, 15, 40, 0.85); 
-    border: 1px solid rgba(56, 182, 255, 0.3);
-    border-radius: 12px; padding: 16px; 
-    color: #dfe8ff; display: none;
-    backdrop-filter: blur(10px);
-    min-width: 180px;
-  `;
-  
-  controlPanel.innerHTML = `
-    <div style="margin-bottom: 12px; font-weight: 700; font-size: 14px; color: #38b6ff;">
-      Choose Experience
-    </div>
-    <button id="enterTheater" style="
-      width: 100%; margin-bottom: 8px; background: rgba(56, 182, 255, 0.2);
-      color: #fff; border: 1px solid #38b6ff; border-radius: 8px; 
-      padding: 10px; font-weight: 600; cursor: pointer;
-    ">Enter Theater</button>
-    <button id="play2d" style="
-      width: 100%; margin-bottom: 8px; background: rgba(255, 255, 255, 0.08);
-      color: #dfe8ff; border: 1px solid #4a7c9e; border-radius: 8px; 
-      padding: 10px; font-weight: 600; cursor: pointer;
-    ">Play 2D</button>
-    <button id="openYT" style="
-      width: 100%; background: rgba(255, 0, 0, 0.2);
-      color: #fff; border: 1px solid #ff4444; border-radius: 8px; 
-      padding: 10px; font-weight: 600; cursor: pointer;
-    ">YouTube Trailer</button>
-    <div style="margin-top: 12px; font-size: 11px; color: #8aa3c7;">
-      Mode: <span id="currentMode">Comfort</span>
-    </div>
-  `;
-  
-  document.body.appendChild(controlPanel);
-
-  // Event handlers
-  document.getElementById('play2d').addEventListener('click', (e) => {
-    e.preventDefault();
-    v2d.src = mp4 || '';
-    document.getElementById('t2d').textContent = title;
-    ov2d.style.display = 'block';
-    controlPanel.style.display = 'none';
-    v2d.play().catch(() => toast('Tap to start video'));
-  });
-
-  document.querySelector('[data-close="ov2d"]').onclick = () => {
-    v2d.pause();
-    v2d.src = '';
-    ov2d.style.display = 'none';
-  };
-
-  const ovYT = document.getElementById('ovYT');
-  const yt = document.getElementById('yt');
-
-  document.getElementById('openYT').addEventListener('click', (e) => {
-    e.preventDefault();
-    yt.src = `https://www.youtube.com/embed/${YT_ID}?autoplay=1&modestbranding=1&rel=0&playsinline=1`;
-    ovYT.style.display = 'block';
-    controlPanel.style.display = 'none';
-  });
-
-  document.querySelector('[data-close="ovYT"]').onclick = () => {
-    yt.src = '';
-    ovYT.style.display = 'none';
-  };
-
-  return { controlPanel };
-}
+// -----------deleted setupMediaPlayers() entire function here --------
 
 // Global variables
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
