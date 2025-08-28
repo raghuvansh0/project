@@ -521,46 +521,6 @@ function buildScene() {
   console.log('✅ Scene built successfully');
 }
 
-/*function rebuildTheaterWithMode(mode) {
-  console.log(`🔄 Rebuilding theater with ${mode} mode`);
-  const newConfig = COMFORT_MODES[mode];
-
-  buildTheaterScreen(mode);
-
-  if (controls) {
-    camera.position.set(...newConfig.cameraPosition);
-    if (newConfig.screenCurve === 0) {
-      controls.target.set(...newConfig.screenPosition);
-      controls.minDistance = 1;
-      controls.maxDistance = 6;
-      controls.enableZoom = true;
-    } else {
-      controls.target.set(0, 1.6, -2); // look forward for immersive
-      controls.minDistance = 0.1;
-      controls.maxDistance = 1;
-      controls.enableZoom = false;
-    }
-    controls.update();
-  }
-
-  if (videoTex && screen) {
-    //videoTex.flipY = (newConfig.screenCurve === 0) ? false : true;
-    //videoTex.needsUpdate = true;
-
-    const side = newConfig.screenCurve === 0 ? THREE.FrontSide : THREE.BackSide;
-    const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTex, toneMapped: false, side });
-    screen.material.dispose();
-    screen.material = videoMaterial;
-
-    if (videoEl) {
-      buildAudioGraph(videoEl);
-      enableAudioforMode(newConfig);
-    }
-  }
-
-  document.getElementById('currentMode').textContent = newConfig.name;
-  logPositions(`After Mode Switch to ${mode}`);
-}*/
 
 function rebuildTheaterWithMode(mode) {
   console.log(`🔄 Rebuilding theater with ${mode} mode`);
@@ -1205,9 +1165,6 @@ async function startMagicWindow(userGesture=false) {
   document.addEventListener('DOMContentLoaded', function() {
   console.log('🎯 App initializing...');
   
-  // Setup enhanced media players
-  const { controlPanel } = setupMediaPlayers();
-
   // Enhanced hero click handler
   hero.addEventListener('click', async (e) => {
   e.preventDefault();
