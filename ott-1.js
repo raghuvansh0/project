@@ -2,38 +2,37 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 
-// Constants
+
 const hero = document.getElementById('hero');
 const mp4 = hero.dataset.mp4;
 const title = hero.dataset.title || 'RV-OTT';
 const poster = hero.dataset.poster || '';
-const YT_ID = 'JVAZGhSdczM';
+//const YT_ID = 'JVAZGhSdczM';
 
-// ASUS ZenBook Duo optimized comfort modes
 const COMFORT_MODES = {
   phone: {
     screenDistance: 2.5,    
-    screenCurve: 0,         // Flat screen
-    fov: 70,                // Comfortable for laptop screen
-    yawOnly: true,
+    screenCurve: 0,          //flat plane
+    fov: 70,                
+    yawOnly: true,          // turn left and right
     name: 'Comfort',
-    cameraPosition: [0, 1.6, 0],      // Camera at center
-    screenPosition: [0, 1.6, -2.5]     // Screen in front
+    cameraPosition: [0, 1.6, 0],      
+    screenPosition: [0, 1.6, -2.5]   
   },
-    desktop: {
-        screenDistance: 3.0,    // Adjusted for a narrower screen
-        screenCurve: 120,       // Slightly less curve for immersion
+    desktop: { 
+        screenDistance: 3.0,   //smaller distance = screen bigger/closer as in phone , bigger distance = smaller/farther for desktop
+        screenCurve: 120,      //70 or 120 we build piece of sphere(like a dome) so picture wraps around you; more wrap more immersive
     fovMin: 65,
     fovMax:85,
-    fov:78,
-    yawOnly: false,
+    fov:78,               //higher fov-wider screen; more world fits on the screen
+    yawOnly: false,       // yaw false as can look in any direction
     name: 'Immersive',
-    cameraPosition: [0, 1.6, 0],      // Camera at center
-    screenPosition: [0, 1.6, 0]       // sphere segment is centered at camera
+    cameraPosition: [0, 1.6, 0],      
+    screenPosition: [0, 1.6, 0]      
   },
   tablet: {
   screenDistance: 2.6,
-  screenCurve: 70,   // gentle wrap for tablets
+  screenCurve: 70,  
   fov: 74,
   yawOnly: false,
   name: 'Immersive',
@@ -44,7 +43,7 @@ const COMFORT_MODES = {
 
 let currentMode = 'phone';
 
-// Utility Functions
+// Utility Function
 const toast = (m) => {
   const el = document.getElementById('toast');
   el.textContent = m;
@@ -63,6 +62,7 @@ function logPositions(label) {
   console.groupEnd();
 }
 
+/* NOT USED ANYWHERE NOW -- ASKING BROWSER WHETHER XR SUPPORTED IF SO BROWSER RETURNS TRUE OR RETURNS FALSE
 async function xrSupported() {
   if (!('xr' in navigator)) return false;
   try {
@@ -70,9 +70,10 @@ async function xrSupported() {
   } catch {
     return false;
   }
-}
+} */
 
 
+ // -------------------- CHECK --------------------- 
 function isSmallTouch() {
   const sw = Math.min(window.screen.width, window.screen.height);
   return navigator.maxTouchPoints >= 1 && sw <= 800;
@@ -83,9 +84,6 @@ function isTabletSizedTouch() {
   return navigator.maxTouchPoints >= 1 && sw > 800 && sw <= 1200;
 }
 
-//function isDesktopOS() {
-//  return /(Win|Mac|Linux)/i.test(navigator.platform || '') || /X11|CrOS/i.test(navigator.userAgent);
-//}
 
 function detectBestMode() {
   
@@ -105,7 +103,7 @@ function detectBestMode() {
 // Enhanced Media Player Setup
 function setupMediaPlayers() {
   const ov2d = document.getElementById('ov2d');
-  const v2d = document.getElementById('v2d');
+  //const v2d = document.getElementById('v2d');
   
   const controlPanel = document.createElement('div');
   controlPanel.id = 'theaterControls';
