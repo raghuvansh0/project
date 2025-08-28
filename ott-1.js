@@ -90,13 +90,16 @@ function detectBestMode() {
 
 /* Global variables
 renderer = the projector that draws pictures
-scene = the entire place
+scene = the entire place where we put screen,stars,lights. Everything is in the scene
+screen = the big movie screen 'mesh' (a flat plane, curved sliced sphere for immersive). We stick
+         the video texture on this.
 controls = the desktop “joystick” to look around.
-mwControls = the mobile “move your phone” controls
+mwControls = the mobile “move your phone” controls. MobileOrientationControls even if you don't use your finger,
+             the phone's sensors(gyroscope) move the camera as you tilt the phone.
 videoEl = a hidden TV (the <video> tag) that plays the mp4.
 videoTex = a sticker made from the video so we can stick it on the 3D screen.
 xrWrap = a black curtain div that covers the page when theater is open. It holds the toolbar too. (
-This is in the HTML.)
+         This is in the HTML.)
 */
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
 const xrWrap = document.getElementById('xrWrap');
@@ -106,10 +109,9 @@ let delay,delayFeedback,reverb,reverbGain = false
 let audioReady=false;
 let prevPan=0;
 
-
+// "remote control bar"
 function enhanceXRToolbar() {
-  const toolbar = document.getElementById('xrToolbar');
-  
+  const toolbar = document.getElementById('xrToolbar'); 
   const modeSelector = document.createElement('select');
   modeSelector.id = 'modeSelector';
   modeSelector.style.cssText = `
