@@ -92,13 +92,17 @@ renderer = the projector that draws pictures
 scene = the entire place where we put screen,stars,lights. Everything is in the scene
 screen = the big movie screen 'mesh' (a flat plane, curved sliced sphere for immersive). We stick
          the video texture on this.
-controls = the desktop “joystick” to look around.
-mwControls = the mobile “move your phone” controls. MobileOrientationControls even if you don't use your finger,
-             the phone's sensors(gyroscope) move the camera as you tilt the phone.
+controls = for desktop/ laptopthe “joystick” to look around. Controls = OrbitControls; camera
+          just stays pointed to the screen so normal movie , if you do drag then look around the theater
+mwControls = MobileOrientationControls : the mobile “move your phone” controls. MobileOrientationControls 
+          even if you don't use your finger,the phone's sensors(gyroscope) move the camera as you tilt the phone.
+          if the phone is resting in hand then view stays steady and you just watch the video and if you gently
+          turn phone left/right its like turning your head in the theater
 videoEl = a hidden TV (the <video> tag) that plays the mp4.
 videoTex = a sticker made from the video so we can stick it on the 3D screen.
 xrWrap = a black curtain div that covers the page when theater is open. It holds the toolbar too. (
          This is in the HTML.)
+         
          
 */
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
