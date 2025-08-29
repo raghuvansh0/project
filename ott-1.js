@@ -102,9 +102,25 @@ videoEl = a hidden TV (the <video> tag) that plays the mp4.
 videoTex = a sticker made from the video so we can stick it on the 3D screen.
 xrWrap = a black curtain div that covers the page when theater is open. It holds the toolbar too. (
          This is in the HTML.)
-         
-         
-*/
+yaw = turning your head left/right (like saying "no")
+pitch = nodding up/down (like saying "yes")
+roll = tilting head sideways (like putting your ear on your shoulder)
+on mobile (with mwControls) when we make MobileOrientationControls, we give it a setting: yawOnly: true 
+(that’s in Comfort mode). yawOnly = ignore pitch and roll, only allow yaw.
+so if yawOnly is true: you can look left/right with your phone.
+but nodding up/down or tilting sideways does nothing → screen stays stable.
+this makes it feel calmer, like you’re in a seat just swiveling your head.
+if yawOnly is false (that’s Immersive mode):
+you can look up at the ceiling, down at the floor, tilt sideways, full freedom.
+feels more like you’re inside a dome.
+on desktop (with controls) yawOnly doesn’t matter here, because desktop uses OrbitControls instead.
+if you don’t drag your mouse → camera stays fixed on the screen.
+if you drag → you can look all around (yaw, pitch, everything).
+yawOnly = “only turn left/right, don’t nod or tilt.”
+comfort mode on phones → yawOnly = true → calm, steady.
+immersive mode → yawOnly = false → full head freedom.
+desktop ignores this and just listens to mouse dragging. */
+
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
 const xrWrap = document.getElementById('xrWrap');
 // audio controls
