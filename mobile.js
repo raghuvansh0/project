@@ -1,16 +1,13 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
-
 
 const hero = document.getElementById('hero');
-const mp4 = hero.dataset.mp4;
-const title = hero.dataset.title || 'RV-OTT';
-const poster = hero.dataset.poster || '';
-//const YT_ID = 'JVAZGhSdczM';
+const mp4 = hero?.dataset.mp4;
+const title = hero?.dataset?.title || 'RV-OTT';
+const poster = hero?.dataset?.poster || '';
+
 
 const COMFORT_MODES = {
-  phone: {
+  comfort: {
     screenDistance: 2.5,    
     screenCurve: 0,          //flat plane
     fov: 70,                
@@ -19,13 +16,13 @@ const COMFORT_MODES = {
     cameraPosition: [0, 1.6, 0],      
     screenPosition: [0, 1.6, -2.5]   
   },
-    desktop: { 
-        screenDistance: 3.0,   //smaller distance = screen bigger/closer as in phone , bigger distance = smaller/farther for desktop
-        screenCurve: 120,      //70 or 120 we build piece of sphere(like a dome) so picture wraps around you; more wrap more immersive
+    immersive: { 
+        screenDistance: 3.0,   
+        screenCurve: 120,     
     fovMin: 65,
     fovMax:85,
-    fov:78,               //higher fov-wider screen; more world fits on the screen
-    yawOnly: false,       // yaw false as can look in any direction
+    fov:78,               
+    yawOnly: false,       
     name: 'Immersive',
     cameraPosition: [0, 1.6, 0],      
     screenPosition: [0, 1.6, 0]      
@@ -41,7 +38,7 @@ const COMFORT_MODES = {
   },
 };
 
-let currentMode = 'phone';
+let currentMode = 'comfort';
 
 // Utility Function
 const toast = (m) => {
