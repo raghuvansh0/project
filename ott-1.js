@@ -83,12 +83,11 @@ function detectBestMode() {
   }
   if (isSmallTouch()) return 'phone';
   if (isTabletSizedTouch()) return 'desktop';  //force it to be desktop now so that it works
-
-  // Everything else (including touch laptops) = desktop
   return 'desktop';
 }
 
-/* Global variables
+/* ---------------------------IMPORTANT COMMENTS ---------------------------------
+Global variables
 renderer = the projector that draws pictures
 scene = the entire place where we put screen,stars,lights. Everything is in the scene
 screen = the big movie screen 'mesh' (a flat plane, curved sliced sphere for immersive). We stick
@@ -100,6 +99,7 @@ videoEl = a hidden TV (the <video> tag) that plays the mp4.
 videoTex = a sticker made from the video so we can stick it on the 3D screen.
 xrWrap = a black curtain div that covers the page when theater is open. It holds the toolbar too. (
          This is in the HTML.)
+         
 */
 let renderer, scene, camera, controls, screen, videoEl, videoTex, mwControls;
 const xrWrap = document.getElementById('xrWrap');
