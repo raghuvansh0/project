@@ -27,33 +27,23 @@ const COMFORT_MODES = {
     cameraPosition: [0, 1.6, 0],      
     screenPosition: [0, 1.6, 0]      
   },
-  tablet: {
-  screenDistance: 2.6,
-  screenCurve: 70,  
-  fov: 74,
-  yawOnly: false,
-  name: 'Immersive',
-  cameraPosition: [0, 1.6, 0],
-  screenPosition: [0, 1.6, 0]
-  },
 };
 
 let currentMode = 'comfort';
-
-// Utility Function
+/* Utility Function
 const toast = (m) => {
   const el = document.getElementById('toast');
+  
   el.textContent = m;
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 2200);
-};
+};*/
 
 // Debug position logging
 function logPositions(label) {
-  if (!camera || !controls || !screen) return;
+  if (!camera || !screen) return;
   console.group(`🎯 Position Debug: ${label}`);
   console.log('Camera position:', camera.position.toArray());
-  console.log('Controls target:', controls.target.toArray());
   console.log('Screen position:', screen.position.toArray());
   console.log('Camera-to-screen distance:', camera.position.distanceTo(screen.position).toFixed(2));
   console.groupEnd();
